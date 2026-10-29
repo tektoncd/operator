@@ -160,14 +160,14 @@ func TestRunPreUpgrade(t *testing.T) {
 	_, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
-	// update pre upgrade functions, which should return error
-	preUpgradeFunctions = []upgradeFunc{
-		func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	// update pre upgrade migrations, which should return error
+	preUpgradeMigrations = []Migration{
+		{Name: "ok", Introduced: "0.68.0", DeletableFrom: "0.70.0", Description: "ok", Fn: func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 			return nil
-		},
-		func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+		}},
+		{Name: "fail", Introduced: "0.68.0", DeletableFrom: "0.70.0", Description: "fail", Fn: func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 			return errors.New("error on execution")
-		},
+		}},
 	}
 
 	// execute pre upgrade, first time return reconcile error - upgrade in progress
@@ -180,11 +180,11 @@ func TestRunPreUpgrade(t *testing.T) {
 	assert.Error(t, err)
 	assert.NotEqual(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
 
-	// update pre upgrade functions
-	preUpgradeFunctions = []upgradeFunc{
-		func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	// update pre upgrade migrations
+	preUpgradeMigrations = []Migration{
+		{Name: "ok", Introduced: "0.68.0", DeletableFrom: "0.70.0", Description: "ok", Fn: func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 			return nil
-		},
+		}},
 	}
 
 	// execute pre upgrade, should return reconcile error - upgrade in progress
@@ -226,14 +226,14 @@ func TestRunPostUpgrade(t *testing.T) {
 	_, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
-	// update post upgrade functions, which should return error
-	postUpgradeFunctions = []upgradeFunc{
-		func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	// update post upgrade migrations, which should return error
+	postUpgradeMigrations = []Migration{
+		{Name: "ok", Introduced: "0.68.0", DeletableFrom: "0.70.0", Description: "ok", Fn: func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 			return nil
-		},
-		func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+		}},
+		{Name: "fail", Introduced: "0.68.0", DeletableFrom: "0.70.0", Description: "fail", Fn: func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 			return errors.New("error on execution")
-		},
+		}},
 	}
 
 	// first time return reconcile error - status update: upgrade in progress
@@ -246,11 +246,11 @@ func TestRunPostUpgrade(t *testing.T) {
 	assert.Error(t, err)
 	assert.NotEqual(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
 
-	// update post upgrade functions
-	postUpgradeFunctions = []upgradeFunc{
-		func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	// update post upgrade migrations
+	postUpgradeMigrations = []Migration{
+		{Name: "ok", Introduced: "0.68.0", DeletableFrom: "0.70.0", Description: "ok", Fn: func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 			return nil
-		},
+		}},
 	}
 
 	// should return reconcile error - status update: upgrade in progress
