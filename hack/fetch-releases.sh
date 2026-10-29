@@ -158,43 +158,43 @@ release_yaml_github() {
   url="https://github.com/$github_component/releases/download/${version}/${releaseFileName}"
   echo "URL to download Release YAML is : $url"
 
-    ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
-    # syncer-service uses non-prefixed directory (similar to pruner/manual-approval-gate)
-    if [[ $component == "syncer-service" ]]; then
-      comp_dir=${ko_data}/${component}
-    else
-      comp_dir=${ko_data}/tekton-${component}
+  ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
+  # syncer-service uses non-prefixed directory (similar to pruner/manual-approval-gate)
+  if [[ $component == "syncer-service" ]]; then
+    comp_dir=${ko_data}/${component}
+  else
+    comp_dir=${ko_data}/tekton-${component}
+  fi
+  dirPath=${comp_dir}/${dirVersion}
+
+  # destination file
+  dest=${dirPath}/${destFileName}
+  echo $dest
+
+  if [ -f "$dest" ] && [ $FORCE_FETCH_RELEASE = "false" ]; then
+    label="app.kubernetes.io/version: \"$version\""
+    label2="app.kubernetes.io/version: $version"
+    label3="version: \"$version\""
+    if grep -Eq "$label" $dest || grep -Eq "$label2" $dest || grep -Eq "$label3" $dest;
+    then
+        echo "release file already exist with required version, skipping!"
+        echo ""
+        return
     fi
-    dirPath=${comp_dir}/${dirVersion}
+  fi
 
-    # destination file
-    dest=${dirPath}/${destFileName}
-    echo $dest
+  #Cleanup the Directory
+  rm -rf $comp_dir || true
 
-    if [ -f "$dest" ] && [ $FORCE_FETCH_RELEASE = "false" ]; then
-      label="app.kubernetes.io/version: \"$version\""
-      label2="app.kubernetes.io/version: $version"
-      label3="version: \"$version\""
-      if grep -Eq "$label" $dest || grep -Eq "$label2" $dest || grep -Eq "$label3" $dest;
-      then
-          echo "release file already exist with required version, skipping!"
-          echo ""
-          return
-      fi
-    fi
+  # create a directory
+  mkdir -p ${dirPath} || true
 
-    #Cleanup the Directory
-    rm -rf $comp_dir || true
-    
-    # create a directory
-    mkdir -p ${dirPath} || true
-
-    http_response=$(curl -s -L -o ${dest} -w "%{http_code}" ${url})
-    if [[ $http_response != "200" ]]; then
-        echo "Error: failed to get $component yaml, status code: $http_response"
-        exit 1
-    fi
-    echo "Info: Added $component/$releaseFileName:$version release yaml !!"
+  http_response=$(curl -s -L -o ${dest} -w "%{http_code}" ${url})
+  if [[ $http_response != "200" ]]; then
+      echo "Error: failed to get $component yaml, status code: $http_response"
+      exit 1
+  fi
+  echo "Info: Added $component/$releaseFileName:$version release yaml !!"
 
 }
 
@@ -309,6 +309,75 @@ release_yaml_manualapprovalgate() {
 
 }
 
+release_yaml_shipwrightbuild() {
+  local component="shipwright-build"
+  local filename="release.yaml"
+
+  local repository=$(yq .${component}.github ${CONFIG})
+  local version=$(yq .${component}.version ${CONFIG})
+  local destination=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata/${component}/${version//v}
+
+  rm -rf ${destination}
+  mkdir -p ${destination}
+
+  # Fetch release yaml
+  echo fetching '|' component: ${component} '|' file: ${filename} '|' version: ${version}
+  local url="https://github.com/${repository}/releases/download/${version}/${filename}"
+  echo url: ${url}
+  local http_response=$(curl -s -L -o ${destination}/${filename} -w "%{http_code}" ${url})
+  if [[ $http_response != "200" ]]; then
+     echo "Error: failed to get ${filename}, status code: ${http_response}"
+     exit 1
+  fi
+  echo "Info: Added ${component}/${filename}:${version} !!"
+  echo ""
+
+  # Fetch strategy yaml
+  if [[ ${TARGET} != "openshift" ]]; then
+    filename="sample-strategies.yaml"
+  else
+    repository="redhat-openshift-builds/strategies"
+    filename="strategies.yaml"
+  fi
+
+  echo fetching '|' component: ${component} '|' file: ${filename} '|' version: ${version}
+  local url="https://github.com/${repository}/releases/download/${version}/${filename}"
+  echo url: ${url}
+  local http_response=$(curl -s -L -o ${destination}/${filename} -w "%{http_code}" ${url})
+  if [[ $http_response != "200" ]]; then
+     echo "Error: failed to get ${filename}, status code: ${http_response}"
+     exit 1
+  fi
+  echo "Info: Added ${component}/${filename}:${version} !!"
+  echo ""
+
+}
+
+release_yaml_sharedresource() {
+  local component="shared-resource"
+  local filename="release.yaml"
+
+  local repository=$(yq .${component}.github ${CONFIG})
+  local version=$(yq .${component}.version ${CONFIG})
+  local destination=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata/${component}/${version//v}
+
+  rm -rf ${destination}
+  mkdir -p ${destination}
+
+  # Fetch release yaml
+  echo fetching '|' component: ${component} '|' file: ${filename} '|' version: ${version}
+  local url="https://github.com/${repository}/releases/download/${version}/${filename}"
+  echo url: ${url}
+  local http_response=$(curl -s -L -o ${destination}/${filename} -w "%{http_code}" ${url})
+  if [[ $http_response != "200" ]]; then
+     echo "Error: failed to get ${filename}, status code: ${http_response}"
+     exit 1
+  fi
+  echo "Info: Added ${component}/${filename}:${version} !!"
+  echo ""
+
+}
+
 fetch_openshift_addon_tasks() {
   fetch_addon_task_script="${SCRIPT_DIR}/hack/openshift"
   local dest_dir='cmd/openshift/operator/kodata/tekton-addon/addons/06-ecosystem/tasks'
@@ -370,8 +439,11 @@ main() {
   pac_version=$(go run ./cmd/tool component-version ${CONFIG} pipelines-as-code)
   release_yaml_pac pipelinesascode release ${pac_version}
 
+
   if [[ ${TARGET} == "openshift" ]]; then
     fetch_openshift_addon_tasks
+    release_yaml_shipwrightbuild
+    release_yaml_sharedresource
   fi
 
   mag_version=$(go run ./cmd/tool component-version ${CONFIG} manual-approval-gate)

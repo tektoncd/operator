@@ -31,3 +31,9 @@ syncer-service:
 triggers:
   github: tektoncd/triggers
   version: v0.37.2
+shipwright-build:
+  github: shipwright-io/build
+  version: v0.21.0
+shared-resource:
+  github: openshift/csi-driver-shared-resource
+  version: v0.4.9

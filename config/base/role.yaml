@@ -437,3 +437,16 @@ rules:
   - deletecollection
   - patch
   - watch
+- apiGroups:
+    - shipwright.io
+  resources:
+    - clusterbuildstrategies
+    - buildstrategies
+  verbs:
+    - delete
+    - deletecollection
+    - create
+    - patch
+    - get
+    - list
+    - update

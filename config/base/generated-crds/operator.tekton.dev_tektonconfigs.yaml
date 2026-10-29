@@ -1490,6 +1490,15 @@ spec:
                               type: string
                             type: object
                         type: object
+                      shipwrightBuild:
+                        description: ShipwrightBuild holds the customizable options
+                          for Shipwright Build component
+                        properties:
+                          enabled:
+                            default: false
+                            description: enable or disable ShipwrightBuild Component
+                            type: boolean
+                        type: object
                     type: object
                   openshift:
                     description: OpenShift allows configuring openshift specific components
@@ -1772,6 +1781,24 @@ spec:
                               MaxAllowed specifies the highest SCC that can be requested for in a
                               namespace or in the Default field.
                             type: string
+                        type: object
+                      sharedResource:
+                        description: SharedResource holds the customizable options
+                          for Shared Resource component
+                        properties:
+                          enabled:
+                            default: true
+                            description: enable or disable SharedResource Component
+                            type: boolean
+                        type: object
+                      shipwrightBuild:
+                        description: ShipwrightBuild holds the customizable options
+                          for Shipwright Build component
+                        properties:
+                          enabled:
+                            default: false
+                            description: enable or disable ShipwrightBuild Component
+                            type: boolean
                         type: object
                     type: object
                 type: object

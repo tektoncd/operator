@@ -27,6 +27,10 @@ import (
 )
 
 const (
+	// KindService identifies Service resources in a manifest.
+	KindService = "Service"
+	// KindCustomResourceDefinition identifies CRD resources in a manifest.
+	KindCustomResourceDefinition = "CustomResourceDefinition"
 	// PipelinesAsCodeManifestDir is the kodata subdirectory for PAC release manifests (not under tekton-addon).
 	PipelinesAsCodeManifestDir = "pipelines-as-code"
 	// PipelinesAsCodeTemplatesDir is the kodata subdirectory for PAC PipelineRun templates embedded as ConfigMaps.
