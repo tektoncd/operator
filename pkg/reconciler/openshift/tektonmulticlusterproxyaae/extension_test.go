@@ -18,10 +18,12 @@ package tektonmulticlusterproxyaae
 
 import (
 	"context"
+	"encoding/json"
 	"path"
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
+	"github.com/stretchr/testify/require"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift"
@@ -29,6 +31,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
+
+// toRawExtension converts any object to runtime.RawExtension for testing
+func toRawExtension(t *testing.T, obj interface{}) runtime.RawExtension {
+	t.Helper()
+	data, err := json.Marshal(obj)
+	require.NoError(t, err)
+	return runtime.RawExtension{Raw: data}
+}
 
 func TestOpenShiftExtensionTransformers(t *testing.T) {
 	t.Run("sets WORKERS_SECRET_NAMESPACE to openshift-kueue-operator", func(t *testing.T) {
@@ -53,8 +63,8 @@ func TestOpenShiftExtensionTransformers(t *testing.T) {
 			Spec: v1alpha1.TektonMulticlusterProxyAAESpec{
 				MulticlusterProxyAAEOptions: v1alpha1.MulticlusterProxyAAEOptions{
 					Options: v1alpha1.AdditionalOptions{
-						Deployments: map[string]appsv1.Deployment{
-							"proxy-aae": {
+						Deployments: map[string]runtime.RawExtension{
+							"proxy-aae": toRawExtension(t, appsv1.Deployment{
 								Spec: appsv1.DeploymentSpec{
 									Template: corev1.PodTemplateSpec{
 										Spec: corev1.PodSpec{
