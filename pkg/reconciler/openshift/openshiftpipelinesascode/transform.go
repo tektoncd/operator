@@ -32,12 +32,15 @@ import (
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
 	pipelinesAsCodeCM                 = "pipelines-as-code"
+	pacControllerServiceAccount       = "pipelines-as-code-controller"
 	additionalPACControllerNameSuffix = "-pac-controller"
 )
 
@@ -86,6 +89,16 @@ func additionalControllerTransform(extension common.Extension, name string) clie
 		pac := comp.(*v1alpha1.OpenShiftPipelinesAsCode)
 		additionalPACControllerConfig := pac.Spec.PACSettings.AdditionalPACControllers[name]
 
+		// give the additional controller access to its own configmap, so that it can
+		// record the learned trusted provider hostnames in the configmap annotation
+		if additionalPACControllerConfig.ConfigMapName != pipelinesAsCodeCM {
+			rbacManifest, err := additionalControllerConfigMapRBAC(name, additionalPACControllerConfig.ConfigMapName, pac.Spec.GetTargetNamespace())
+			if err != nil {
+				return &mf.Manifest{}, err
+			}
+			*manifest = manifest.Append(rbacManifest)
+		}
+
 		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PacImagePrefix))
 		images := common.ImageRegistryDomainOverride(imagesRaw)
 		// Run transformers
@@ -118,6 +131,44 @@ func additionalControllerTransform(extension common.Extension, name string) clie
 
 		return manifest, nil
 	}
+}
+
+// additionalControllerConfigMapRBAC returns a Role and RoleBinding which allow the
+// additional PACController to get, update and patch only its own configMap
+func additionalControllerConfigMapRBAC(name, configMapName, namespace string) (mf.Manifest, error) {
+	rbacName := fmt.Sprintf("%s%s-configmap", name, additionalPACControllerNameSuffix)
+	labels := map[string]string{"app.kubernetes.io/part-of": "pipelines-as-code"}
+
+	role := &rbacv1.Role{
+		TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "Role"},
+		ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: namespace, Labels: labels},
+		Rules: []rbacv1.PolicyRule{{
+			APIGroups:     []string{""},
+			Resources:     []string{"configmaps"},
+			ResourceNames: []string{configMapName},
+			Verbs:         []string{"get", "update", "patch"},
+		}},
+	}
+	roleBinding := &rbacv1.RoleBinding{
+		TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "RoleBinding"},
+		ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: namespace, Labels: labels},
+		RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "Role", Name: rbacName},
+		Subjects: []rbacv1.Subject{{
+			Kind:      rbacv1.ServiceAccountKind,
+			Name:      pacControllerServiceAccount,
+			Namespace: namespace,
+		}},
+	}
+
+	resources := []unstructured.Unstructured{}
+	for _, obj := range []interface{}{role, roleBinding} {
+		content, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+		if err != nil {
+			return mf.Manifest{}, err
+		}
+		resources = append(resources, unstructured.Unstructured{Object: content})
+	}
+	return mf.ManifestFrom(mf.Slice(resources))
 }
 
 // This returns all resources to deploy for the additional PACController
