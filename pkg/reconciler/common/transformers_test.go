@@ -1137,6 +1137,84 @@ func TestAddStatefulSetPSA(t *testing.T) {
 	}
 }
 
+func TestAddStatefulEnvVars(t *testing.T) {
+	const (
+		controllerName = "tekton-pipelines-controller"
+		serviceName    = "tekton-pipelines-controller"
+		serviceEnv     = "STATEFUL_SERVICE_NAME"
+		ordinalEnv     = "STATEFUL_CONTROLLER_ORDINAL"
+	)
+
+	tests := []struct {
+		name             string
+		replicas         *int32
+		wantReplicaCount string
+	}{
+		{
+			name:             "explicit replicas",
+			replicas:         ptr.Int32(5),
+			wantReplicaCount: "5",
+		},
+		{
+			name:             "nil replicas",
+			replicas:         nil,
+			wantReplicaCount: "1",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ss := &appsv1.StatefulSet{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       KindStatefulSet,
+					APIVersion: appsv1.SchemeGroupVersion.String(),
+				},
+				ObjectMeta: metav1.ObjectMeta{Name: controllerName},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas:    test.replicas,
+					ServiceName: serviceName,
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{Name: "controller"}},
+						},
+					},
+				},
+			}
+			content, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ss)
+			assert.NilError(t, err)
+			manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{{Object: content}}))
+			assert.NilError(t, err)
+
+			transformed, err := manifest.Transform(AddStatefulEnvVars(controllerName, serviceName, serviceEnv, ordinalEnv))
+			assert.NilError(t, err)
+
+			got := statefulSetFor(t, transformed.Resources()[0])
+			foundService, foundOrdinal, replicaCount := false, false, ""
+			for _, env := range got.Spec.Template.Spec.Containers[0].Env {
+				switch env.Name {
+				case serviceEnv:
+					foundService = true
+					assert.Equal(t, env.Value, serviceName)
+				case ordinalEnv:
+					foundOrdinal = true
+					if env.ValueFrom == nil || env.ValueFrom.FieldRef == nil || env.ValueFrom.FieldRef.FieldPath != "metadata.name" {
+						t.Errorf("%s fieldPath = %v, want metadata.name", ordinalEnv, env.ValueFrom)
+					}
+				case statefulReplicaCountEnv:
+					replicaCount = env.Value
+				}
+			}
+			if !foundService {
+				t.Errorf("missing %s", serviceEnv)
+			}
+			if !foundOrdinal {
+				t.Errorf("missing %s", ordinalEnv)
+			}
+			assert.Equal(t, replicaCount, test.wantReplicaCount)
+		})
+	}
+}
+
 func TestCopyConfigMapValues(t *testing.T) {
 	testData := path.Join("testdata", "test-resolver-config.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
