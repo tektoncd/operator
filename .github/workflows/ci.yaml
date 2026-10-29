@@ -24,6 +24,7 @@ jobs:
     outputs:
       non-docs: ${{ steps.detect.outputs.non-docs }}
       yaml: ${{ steps.detect.outputs.yaml }}
+      chart: ${{ steps.detect.outputs.chart }}
     steps:
     - name: Get base depth
       id: base-depth
@@ -57,8 +58,11 @@ jobs:
           # We only care about grep's exit status (did it find matches?), not the pipe status
           NON_DOCS=$($GIT_DIFF_CMD | grep -Ev '\.md$' > /dev/null && echo 'true' || echo 'false')
           YAML=$($GIT_DIFF_CMD | grep -E '\.ya?ml$' > /dev/null && echo 'true' || echo 'false')
+          # Chart checks also run when their workflow changes, so edits to it get exercised
+          CHART=$($GIT_DIFF_CMD | grep -E '^charts/|^\.github/workflows/helm-chart\.yaml$' > /dev/null && echo 'true' || echo 'false')
           echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
           echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
+          echo "chart=${CHART}" | tee -a $GITHUB_OUTPUT
         fi
 
         # Re-enable pipefail for subsequent commands
@@ -175,9 +179,13 @@ jobs:
   e2e-tests:
     needs: [build]
     uses: ./.github/workflows/e2e-matrix.yml
+  helm-chart:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.chart == 'true' }}
+    uses: ./.github/workflows/helm-chart.yaml
   ci-summary:
     name: CI summary
-    needs: [build, linting, tests, generated, multi-arch-build, e2e-tests]
+    needs: [build, linting, tests, generated, multi-arch-build, e2e-tests, helm-chart]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -190,6 +198,7 @@ jobs:
           "generated=${NEEDS_GENERATED_RESULT}"
           "multi-arch-build=${NEEDS_MULTI_ARCH_BUILD_RESULT}"
           "e2e-tests=${NEEDS_E2E_TESTS_RESULT}"
+          "helm-chart=${NEEDS_HELM_CHART_RESULT}"
         )
         failed=0
         for r in "${results[@]}"; do
@@ -212,3 +221,4 @@ jobs:
         NEEDS_GENERATED_RESULT: ${{ needs.generated.result }}
         NEEDS_MULTI_ARCH_BUILD_RESULT: ${{ needs.multi-arch-build.result }}
         NEEDS_E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
+        NEEDS_HELM_CHART_RESULT: ${{ needs.helm-chart.result }}
