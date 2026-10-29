@@ -321,6 +321,8 @@ image-substitutions:
 
 # add third party images which are not replaced by operator
 # but pulled directly by tasks here
-defaultRelatedImages: []
 #  - image: "" ##<imagename>:<tag> or <imagename>@<sha>
 #    name: "" # ENV key name value
+defaultRelatedImages:
+  - image: quay.io/openshift-pipeline/must-gather@sha256:bfb6a97f39278437e7ce20823fc699f1e19860af3014f31656e5848077971752
+    name: OPENSHIFT_PIPELINES_MUST_GATHER
