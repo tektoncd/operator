@@ -17,6 +17,7 @@ kind: TektonKueue
 metadata:
   name: kueue
 spec:
+  multi-cluster-plugin: manual
   targetNamespace: tekton-pipelines
   disabled: false
   multi-cluster-disabled: true

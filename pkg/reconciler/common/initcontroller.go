@@ -32,6 +32,8 @@ import (
 
 const ReleaseVersionUnknown = "Unknown"
 
+const MultiKueuePluginManifestDir = "pipelines-multikueue-plugin"
+
 type Controller struct {
 	Manifest         *mf.Manifest
 	Logger           *zap.SugaredLogger
@@ -129,6 +131,8 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 	case v1alpha1.TektonKueueResourceName:
 		var kueue v1alpha1.TektonKueue
 		return AppendTarget(ctx, ctrl.Manifest, &kueue)
+	case MultiKueuePluginManifestDir:
+		return AppendManifest(ctrl.Manifest, filepath.Join(ComponentBaseDir(), MultiKueuePluginManifestDir))
 	case v1alpha1.MultiClusterProxyAAEResourceName:
 		var proxyAAE v1alpha1.TektonMulticlusterProxyAAE
 		return AppendTarget(ctx, ctrl.Manifest, &proxyAAE)

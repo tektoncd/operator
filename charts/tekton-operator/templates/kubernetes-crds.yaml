@@ -2916,6 +2916,14 @@ spec:
                     type: boolean
                   multi-cluster-disabled:
                     type: boolean
+                  multi-cluster-plugin:
+                    default: manual
+                    description: MultiClusterPlugin selects how worker clusters are
+                      connected to MultiKueue.
+                    enum:
+                    - manual
+                    - acm
+                    type: string
                   multi-cluster-role:
                     description: |-
                       MultiClusterRole Define the role of current cluster in multi-cluster environment. The MultiClusterRole
@@ -8520,6 +8528,14 @@ spec:
                 type: boolean
               multi-cluster-disabled:
                 type: boolean
+              multi-cluster-plugin:
+                default: manual
+                description: MultiClusterPlugin selects how worker clusters are connected
+                  to MultiKueue.
+                enum:
+                - manual
+                - acm
+                type: string
               multi-cluster-role:
                 description: |-
                   MultiClusterRole Define the role of current cluster in multi-cluster environment. The MultiClusterRole
