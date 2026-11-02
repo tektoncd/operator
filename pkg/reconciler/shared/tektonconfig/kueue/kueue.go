@@ -37,9 +37,7 @@ const (
 
 func EnsureTektonKueueExists(ctx context.Context, clients op.TektonKueueInterface, newKueue *v1alpha1.TektonKueue) (*v1alpha1.TektonKueue, error) {
 
-	// Update MultiKueueOverride
-	// If MultiCluster is enabled and MultiClusterRole=Hub then MultiKueueOverride should be true
-	newKueue.Spec.Config.MultiKueueOverride = !newKueue.Spec.MultiClusterDisabled && strings.EqualFold(string(newKueue.Spec.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub))
+	setMultiKueueOverride(newKueue)
 	TektonKueue, err := GetTektonKueue(ctx, clients, v1alpha1.TektonKueueResourceName)
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
@@ -66,6 +64,33 @@ func EnsureTektonKueueExists(ctx context.Context, clients op.TektonKueueInterfac
 	}
 
 	return TektonKueue, err
+}
+
+// setMultiKueueOverride updates MultiKueueOverride.
+// If MultiCluster is enabled and MultiClusterRole=Hub then MultiKueueOverride should be true
+func setMultiKueueOverride(kueue *v1alpha1.TektonKueue) {
+	kueue.Spec.Config.MultiKueueOverride = !kueue.Spec.MultiClusterDisabled && strings.EqualFold(string(kueue.Spec.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub))
+}
+
+// propagateACMDeselection updates an existing TektonKueue that still enables the
+// ACM plugin when newKueue no longer does, so that TektonKueue can remove it.
+func propagateACMDeselection(ctx context.Context, clients op.TektonKueueInterface, newKueue *v1alpha1.TektonKueue) error {
+	if newKueue.Spec.Kueue.IsACMPluginEnabled() {
+		return nil
+	}
+	TektonKueue, err := GetTektonKueue(ctx, clients, v1alpha1.TektonKueueResourceName)
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	if !TektonKueue.Spec.Kueue.IsACMPluginEnabled() {
+		return nil
+	}
+	setMultiKueueOverride(newKueue)
+	_, err = UpdateKueue(ctx, TektonKueue, newKueue, clients)
+	return err
 }
 
 func GetTektonKueue(ctx context.Context, clients op.TektonKueueInterface, name string) (*v1alpha1.TektonKueue, error) {
@@ -194,6 +219,13 @@ func EnsureTektonComponent(ctx context.Context, tc *v1alpha1.TektonConfig, opera
 		// If TektonKueue is disabled then uninstall the components
 		return EnsureTektonKueueCRNotExists(ctx, operatorClientSet.OperatorV1alpha1().TektonKueues())
 	}
+	// Propagate an ACM plugin deselection before the prerequisite checks, so that
+	// TektonKueue removes the plugin even when a prerequisite is no longer available.
+	TektonKueue := GetTektonKueueCR(tc, operatorVersion)
+	if err := propagateACMDeselection(ctx, operatorClientSet.OperatorV1alpha1().TektonKueues(), TektonKueue); err != nil {
+		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonKueue : %s", err.Error()))
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	}
 	// Cert-Manager should also be pre-installed
 	_, err := operatorClientSet.Discovery().ServerResourcesForGroupVersion(CERT_GVK)
 	if err != nil {
@@ -209,7 +241,6 @@ func EnsureTektonComponent(ctx context.Context, tc *v1alpha1.TektonConfig, opera
 	}
 
 	// If Kueue is installed then create TektonKueue CR
-	TektonKueue := GetTektonKueueCR(tc, operatorVersion)
 	if _, err := EnsureTektonKueueExists(ctx, operatorClientSet.OperatorV1alpha1().TektonKueues(), TektonKueue); err != nil {
 		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonKueue : %s", err.Error()))
 		return v1alpha1.REQUEUE_EVENT_AFTER

@@ -88,7 +88,7 @@ func TestMigrateTektonSchedulerToTektonKueue(t *testing.T) {
 					SchedulerConfig: v1alpha1.SchedulerConfig{Config: config.Config{
 						QueueName: "migration-test-queue",
 					}},
-					MultiClusterConfig: v1alpha1.MultiClusterConfig{
+					SchedulerMultiClusterConfig: v1alpha1.SchedulerMultiClusterConfig{
 						MultiClusterDisabled: true,
 					},
 				},
@@ -106,7 +106,7 @@ func TestMigrateTektonSchedulerToTektonKueue(t *testing.T) {
 					SchedulerConfig: v1alpha1.SchedulerConfig{Config: config.Config{
 						QueueName: "migration-test-queue",
 					}},
-					MultiClusterConfig: v1alpha1.MultiClusterConfig{
+					SchedulerMultiClusterConfig: v1alpha1.SchedulerMultiClusterConfig{
 						MultiClusterDisabled: true,
 					},
 				},

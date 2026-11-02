@@ -38,8 +38,26 @@ func (ts *TektonKueue) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// execute common spec validations
 	errs = errs.Also(ts.Spec.CommonSpec.validate("spec"))
 	errs = errs.Also(ts.Spec.MultiClusterConfig.validate())
+	errs = errs.Also(ts.Spec.Kueue.validateFleetManager("spec.fleet-manager"))
 	errs = errs.Also(ts.Spec.NetworkPolicy.validate("spec.networkPolicy"))
 	return errs
+}
+
+func (k *Kueue) validateFleetManager(field string) *apis.FieldError {
+	switch k.FleetManager {
+	case "", FleetManagerManual:
+		return nil
+	case FleetManagerACM:
+		if k.IsDisabled() || k.MultiClusterDisabled {
+			return nil
+		}
+		if !IsOpenShiftPlatform() || !strings.EqualFold(string(k.MultiClusterRole), string(MultiClusterRoleHub)) {
+			return apis.ErrInvalidValue(k.FleetManager, field, "acm requires an OpenShift hub with multi-cluster enabled")
+		}
+		return nil
+	default:
+		return apis.ErrInvalidValue(k.FleetManager, field, "must be manual or acm")
+	}
 }
 
 func (mcc *MultiClusterConfig) validate() (errs *apis.FieldError) {

@@ -49,7 +49,7 @@ func TestTektonScheduler_ValidateMultiClusterDisabled(t *testing.T) {
 			CommonSpec: CommonSpec{TargetNamespace: "tekton-pipelines"},
 			Scheduler: Scheduler{
 				Disabled: ptr.Bool(false),
-				MultiClusterConfig: MultiClusterConfig{
+				SchedulerMultiClusterConfig: SchedulerMultiClusterConfig{
 					MultiClusterDisabled: true,
 					MultiClusterRole:     "Hub",
 				},
@@ -77,7 +77,7 @@ func TestTektonScheduler_ValidateMultiClusterEnabled(t *testing.T) {
 			CommonSpec: CommonSpec{TargetNamespace: "tekton-pipelines"},
 			Scheduler: Scheduler{
 				Disabled: ptr.Bool(false),
-				MultiClusterConfig: MultiClusterConfig{
+				SchedulerMultiClusterConfig: SchedulerMultiClusterConfig{
 					MultiClusterDisabled: false,
 					MultiClusterRole:     "",
 				},
@@ -119,7 +119,7 @@ func TestTektonScheduler_ValidateMultiClusterRoleCaseInsensitive(t *testing.T) {
 					CommonSpec: CommonSpec{TargetNamespace: "tekton-pipelines"},
 					Scheduler: Scheduler{
 						Disabled: ptr.Bool(false),
-						MultiClusterConfig: MultiClusterConfig{
+						SchedulerMultiClusterConfig: SchedulerMultiClusterConfig{
 							MultiClusterDisabled: false,
 							MultiClusterRole:     tc.role,
 						},
@@ -146,7 +146,7 @@ func TestTektonScheduler_ValidateCommonSpec(t *testing.T) {
 			CommonSpec: CommonSpec{TargetNamespace: "kube-system"},
 			Scheduler: Scheduler{
 				Disabled: ptr.Bool(false),
-				MultiClusterConfig: MultiClusterConfig{
+				SchedulerMultiClusterConfig: SchedulerMultiClusterConfig{
 					MultiClusterDisabled: true,
 				},
 			},

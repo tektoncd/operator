@@ -19,6 +19,9 @@ pipeline:
 pipelines-as-code:
   github: tektoncd/pipelines-as-code
   version: v0.53.0
+pipelines-multikueue-plugin:
+  github: openshift-pipelines/pipelines-multikueue-plugin
+  version: v0.1.0
 pruner:
   github: tektoncd/pruner
   version: v0.4.4

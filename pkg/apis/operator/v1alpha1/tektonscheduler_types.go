@@ -49,9 +49,9 @@ type TektonScheduler struct {
 // Scheduler defines the deprecated TektonScheduler configuration.
 type Scheduler struct {
 	// enable or disable TektonScheduler Component
-	Disabled           *bool `json:"disabled"`
-	SchedulerConfig    `json:",inline"`
-	MultiClusterConfig `json:",inline"`
+	Disabled                    *bool `json:"disabled"`
+	SchedulerConfig             `json:",inline"`
+	SchedulerMultiClusterConfig `json:",inline"`
 	// options holds additions fields and these fields will be updated on the manifests
 	// +optional
 	Options AdditionalOptions `json:"options"`
@@ -64,6 +64,14 @@ type SchedulerConfig struct {
 	config.Config `json:"config.yaml"`
 }
 
+// SchedulerMultiClusterConfig contains the deprecated TektonScheduler multi-cluster
+// configuration. It is separate from MultiClusterConfig so that newer fields
+// are not added to the deprecated API.
+type SchedulerMultiClusterConfig struct {
+	MultiClusterDisabled bool             `json:"multi-cluster-disabled"`
+	MultiClusterRole     MultiClusterRole `json:"multi-cluster-role"`
+}
+
 // ToKueue converts deprecated scheduler configuration to its replacement.
 func (s Scheduler) ToKueue() Kueue {
 	return Kueue{
@@ -71,8 +79,11 @@ func (s Scheduler) ToKueue() Kueue {
 		KueueConfig: KueueConfig{
 			Config: s.Config,
 		},
-		MultiClusterConfig: s.MultiClusterConfig,
-		Options:            s.Options,
+		MultiClusterConfig: MultiClusterConfig{
+			MultiClusterDisabled: s.MultiClusterDisabled,
+			MultiClusterRole:     s.MultiClusterRole,
+		},
+		Options: s.Options,
 	}
 }
 

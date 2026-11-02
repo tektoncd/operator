@@ -32,6 +32,8 @@ const (
 	KueueCreatedByValue                          = "TektonKueue"
 	MultiClusterRoleSpoke       MultiClusterRole = "Spoke"
 	MultiClusterRoleHub         MultiClusterRole = "Hub"
+	FleetManagerManual          FleetManager     = "manual"
+	FleetManagerACM             FleetManager     = "acm"
 )
 
 func (tp *TektonKueue) SetDefaults(_ context.Context) {
@@ -39,6 +41,9 @@ func (tp *TektonKueue) SetDefaults(_ context.Context) {
 }
 
 func (s *Kueue) SetDefaults() {
+	if s.FleetManager == "" {
+		s.FleetManager = FleetManagerManual
+	}
 	if s.Disabled == nil {
 		s.Disabled = ptr.To(DefaultKueueDisabled)
 		s.MultiClusterDisabled = DefaultMultiClusterDisabled

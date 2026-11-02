@@ -529,6 +529,10 @@ kueue:
 
 - `disabled`: set to `false` to enable the Tekton Kueue component (default is `true`).
 - `multi-cluster-disabled`: when `false`, multi-cluster features are enabled (default is `true`).
+- `fleet-manager`: `manual` (default when omitted) or `acm`. On an enabled
+  OpenShift Hub, `acm` installs the Pipelines MultiKueue Plugin as a TektonKueue-owned
+  subcomponent. See [Fleet manager](./TektonKueue.md#fleet-manager)
+  for prerequisites, existing deployment options and removal behavior.
 - `multi-cluster-role`: `Hub` or `Spoke`. When set to **Hub**, TektonConfig also creates and manages the [TektonMulticlusterProxyAAE](./TektonMulticlusterProxyAAE.md) component automatically (the proxy is used to communicate with spoke clusters, e.g. for [Kueue MultiKueue](https://kueue.sigs.k8s.io/docs/concepts/multikueue/)). On spoke clusters use `Spoke`; the proxy is not installed there.
 
 See [TektonMulticlusterProxyAAE](./TektonMulticlusterProxyAAE.md) for details on the proxy component and its requirements.

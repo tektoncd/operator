@@ -17,6 +17,7 @@ kind: TektonKueue
 metadata:
   name: kueue
 spec:
+  fleet-manager: manual
   targetNamespace: tekton-pipelines
   disabled: false
   multi-cluster-disabled: true

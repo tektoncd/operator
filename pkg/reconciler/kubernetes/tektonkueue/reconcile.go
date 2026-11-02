@@ -77,6 +77,21 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, TektonKueue *v1alpha1.Te
 		return nil
 	}
 
+	// Run platform cleanup before dependency checks so deselection works even
+	// when an API needed by the previous installation is no longer available.
+	if err := r.extension.PreReconcile(ctx, TektonKueue); err != nil {
+		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
+		logger.Error(msg)
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		TektonKueue.Status.MarkPreReconcilerFailed(msg)
+		return nil
+	}
+
+	// Mark PreReconcile Complete
+	TektonKueue.Status.MarkPreReconcilerComplete()
+
 	// reconcile target namespace
 	if err := common.ReconcileTargetNamespace(ctx, nil, nil, TektonKueue, r.kubeClientSet); err != nil {
 		return err
@@ -93,19 +108,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, TektonKueue *v1alpha1.Te
 		logger.Error("failed to remove obsolete installer sets: %v", err)
 		return err
 	}
-
-	if err := r.extension.PreReconcile(ctx, TektonKueue); err != nil {
-		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
-		logger.Error(msg)
-		if err == v1alpha1.REQUEUE_EVENT_AFTER {
-			return err
-		}
-		TektonKueue.Status.MarkPreReconcilerFailed(msg)
-		return nil
-	}
-
-	// Mark PreReconcile Complete
-	TektonKueue.Status.MarkPreReconcilerComplete()
 
 	//  Create/Update Required TektonInstallerSets
 	if err := r.ensureInstallerSets(ctx, TektonKueue); err != nil {

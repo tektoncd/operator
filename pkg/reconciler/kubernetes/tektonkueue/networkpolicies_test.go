@@ -21,7 +21,28 @@ import (
 
 	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
+
+func TestCorePoliciesDoNotIsolateMultiKueuePlugin(t *testing.T) {
+	pluginLabels := labels.Set{
+		"app.kubernetes.io/name": "tekton-kueue",
+		"control-plane":          "pipelines-multikueue-controller",
+	}
+	policies := kueueDefaultDenyPolicies()
+	policies = append(policies, kueueControllerDefaultPolicies(networkpolicy.OpenShiftPlatformDefaults())...)
+	policies = append(policies, kueueWebhookDefaultPolicies(networkpolicy.OpenShiftPlatformDefaults())...)
+	for _, policy := range policies {
+		selector, err := metav1.LabelSelectorAsSelector(&policy.Spec.PodSelector)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if selector.Matches(pluginLabels) {
+			t.Fatalf("core policy %s unexpectedly selects the ACM plugin", policy.Name)
+		}
+	}
+}
 
 func TestConstants(t *testing.T) {
 	if kueueCustomSet != "scheduler-network-policies" {
