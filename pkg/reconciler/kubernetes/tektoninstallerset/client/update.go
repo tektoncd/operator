@@ -54,22 +54,27 @@ func (i *InstallerSetClient) updateMainSets(ctx context.Context, comp v1alpha1.T
 	logger := logging.FromContext(ctx)
 	logger.Debugf("updating main installersets for %v", i.resourceKind)
 
-	staticManifest := manifest.Filter(mf.Not(mf.ByKind("Deployment")))
-	deploymentManifest := manifest.Filter(mf.ByKind("Deployment"))
+	// Keep the same split as makeMainSets: Services stay with Deployments in the
+	// deployment InstallerSet. Previously update put Services into the static
+	// set, which orphaned live Services created under main-deployment (no prune
+	// on manifest removal) and broke in-place updates such as mTLS annotation
+	// removal on freshly created components.
+	staticManifest := manifest.Filter(mf.Not(mf.ByKind("Deployment")), mf.Not(mf.ByKind("Service")))
+	deploymentManifest := manifest.Filter(mf.Any(mf.ByKind("Deployment"), mf.ByKind("Service")))
 
 	var updatedSets []v1alpha1.TektonInstallerSet
 
 	for _, is := range toBeUpdatedIS {
 		logger.Debugf("updating installer set: %v", is.GetName())
 
-		var manifest *mf.Manifest
+		var setManifest *mf.Manifest
 		if strings.Contains(is.GetName(), InstallerSubTypeStatic) {
-			manifest = &staticManifest
+			setManifest = &staticManifest
 		} else {
-			manifest = &deploymentManifest
+			setManifest = &deploymentManifest
 		}
 
-		updatedSet, err := i.updateSet(ctx, comp, is, manifest)
+		updatedSet, err := i.updateSet(ctx, comp, is, setManifest)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update installerset : %v", err)
 		}

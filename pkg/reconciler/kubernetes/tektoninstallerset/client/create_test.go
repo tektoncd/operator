@@ -33,6 +33,7 @@ import (
 var (
 	serviceAccount = namespacedResource("v1", "ServiceAccount", "test", "test-service-account")
 	deployment     = namespacedResource("v1", "Deployment", "test", "test-deployment")
+	service        = namespacedResource("v1", "Service", "test", "test-service")
 )
 
 // namespacedResource is an unstructured resource with the given apiVersion, kind, ns and name.
