@@ -2,9 +2,8 @@
 
 ## Upgrade tests
 
-Scenario B: install the latest released operator, create workloads, upgrade to
-the current checkout, assert TektonConfig pre/post upgrade versions, then
-re-check workloads.
+Install the latest released operator, create workloads, upgrade to the current
+checkout, assert TektonConfig pre/post upgrade versions, then re-check workloads.
 
 ```bash
 # Cluster already exists

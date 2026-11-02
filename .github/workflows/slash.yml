@@ -14,7 +14,7 @@
 # Supported commands:
 # - /retest: re-runs failed GitHub Actions on the PR
 # - /cherry-pick <branch> [...]: cherry-picks a merged PR onto release branches
-# - /test upgrade: runs operator upgrade e2e (scenario B) against the PR head
+# - /test upgrade: runs operator upgrade e2e against the PR head
 #
 # When a command is recognised, the rocket and eyes emojis are added
 

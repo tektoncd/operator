@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Upgrade scenario B:
+# Upgrade test:
 #   1. Install latest released operator
 #   2. Record/assert release TektonConfig version (baseline)
 #   3. Create workloads and wait for success
