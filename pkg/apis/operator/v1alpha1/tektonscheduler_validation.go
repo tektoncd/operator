@@ -36,7 +36,8 @@ func (ts *TektonScheduler) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// execute common spec validations
 	errs = errs.Also(ts.Spec.CommonSpec.validate("spec"))
-	errs = errs.Also(ts.Spec.MultiClusterConfig.validate())
+	multiCluster := ts.Spec.ToKueue().MultiClusterConfig
+	errs = errs.Also(multiCluster.validate())
 	errs = errs.Also(ts.Spec.NetworkPolicy.validate("spec.networkPolicy"))
 	return errs
 }

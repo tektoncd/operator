@@ -2914,6 +2914,14 @@ spec:
                   disabled:
                     description: enable or disable TektonKueue Component
                     type: boolean
+                  fleet-manager:
+                    default: manual
+                    description: FleetManager selects how worker clusters are connected
+                      to MultiKueue.
+                    enum:
+                    - manual
+                    - acm
+                    type: string
                   multi-cluster-disabled:
                     type: boolean
                   multi-cluster-role:
@@ -8537,6 +8545,14 @@ spec:
               disabled:
                 description: enable or disable TektonKueue Component
                 type: boolean
+              fleet-manager:
+                default: manual
+                description: FleetManager selects how worker clusters are connected
+                  to MultiKueue.
+                enum:
+                - manual
+                - acm
+                type: string
               multi-cluster-disabled:
                 type: boolean
               multi-cluster-role:

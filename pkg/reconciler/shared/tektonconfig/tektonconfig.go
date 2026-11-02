@@ -242,6 +242,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	// - multi-cluster-disabled: false
 	// - multi-cluster-role: Hub
 	proxyAAEEnabled := multiclusterproxyaae.IsMulticlusterProxyAAEEnabled(tc)
+	proxyPending := false
 	logger.Infow("TektonMulticlusterProxyAAE enablement",
 		"enabled", proxyAAEEnabled,
 		"kueueDisabled", tc.Spec.Kueue.IsDisabled(),
@@ -251,15 +252,15 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		proxyCR := multiclusterproxyaae.GetTektonMulticlusterProxyAAECR(tc, r.operatorVersion)
 		logger.Debug("Ensuring TektonMulticlusterProxyAAE CR exists (multi-cluster enabled with Hub role)")
 		if _, err := multiclusterproxyaae.EnsureTektonMulticlusterProxyAAEExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonMulticlusterProxyAAEs(), proxyCR); err != nil {
-			if err == v1alpha1.RECONCILE_AGAIN_ERR {
+			if err != v1alpha1.RECONCILE_AGAIN_ERR {
+				errMsg := fmt.Sprintf("TektonMulticlusterProxyAAE: %s", err.Error())
+				logger.Errorw("Failed to ensure TektonMulticlusterProxyAAE exists", "error", err)
+				tc.Status.MarkComponentNotReady(errMsg)
 				return v1alpha1.REQUEUE_EVENT_AFTER
 			}
-			errMsg := fmt.Sprintf("TektonMulticlusterProxyAAE: %s", err.Error())
-			logger.Errorw("Failed to ensure TektonMulticlusterProxyAAE exists", "error", err)
-			tc.Status.MarkComponentNotReady(errMsg)
-			return v1alpha1.REQUEUE_EVENT_AFTER
+			proxyPending = true
 		}
-		logger.Debug("TektonMulticlusterProxyAAE CR reconciled successfully")
+		logger.Debugw("TektonMulticlusterProxyAAE readiness", "pending", proxyPending)
 	} else {
 		logger.Debugw("Ensuring TektonMulticlusterProxyAAE CR doesn't exist",
 			"kueueDisabled", tc.Spec.Kueue.IsDisabled(),
@@ -277,8 +278,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		logger.Debug("TektonMulticlusterProxyAAE CR removal reconciled successfully")
 	}
 
+	// The proxy needs a worker, which the ACM plugin registers. Reconcile
+	// TektonKueue before waiting for proxy readiness to avoid a bootstrap deadlock.
 	if err := r.EnsureKueueComponent(ctx, tc); err != nil {
 		return err
+	}
+	if proxyPending {
+		tc.Status.MarkComponentNotReady("TektonMulticlusterProxyAAE is not ready")
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// Ensure Pipeline Trigger
