@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Workloads created before operator upgrade (scenario B).
+# Workloads created before operator upgrade.
 apiVersion: v1
 kind: Namespace
 metadata:

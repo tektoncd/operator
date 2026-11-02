@@ -1,4 +1,4 @@
-# Upgrade tests (scenario B):
+# Upgrade tests:
 #   latest release → create workloads → upgrade to HEAD → assert upgrade versions
 #   and re-check workloads.
 #
