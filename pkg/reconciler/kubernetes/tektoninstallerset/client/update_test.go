@@ -17,6 +17,7 @@ limitations under the License.
 */
 
 import (
+	"strings"
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
@@ -149,6 +150,40 @@ func TestInstallerSetClient_Update(t *testing.T) {
 			resources: []unstructured.Unstructured{serviceAccount, deployment},
 			wantErr:   nil,
 		},
+		{
+			name:    "update main sets keeps Service with Deployment",
+			setType: InstallerTypeMain,
+			existingIS: []v1alpha1.TektonInstallerSet{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "trigger-main-static-8vue6",
+						Annotations: map[string]string{
+							v1alpha1.LastAppliedHashKey: "old-hash",
+						},
+					},
+					Spec: v1alpha1.TektonInstallerSetSpec{
+						Manifests: []unstructured.Unstructured{
+							serviceAccount,
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "trigger-main-deployment-asd34",
+						Annotations: map[string]string{
+							v1alpha1.LastAppliedHashKey: "old-hash",
+						},
+					},
+					Spec: v1alpha1.TektonInstallerSetSpec{
+						Manifests: []unstructured.Unstructured{
+							deployment, service,
+						},
+					},
+				},
+			},
+			resources: []unstructured.Unstructured{serviceAccount, deployment, service},
+			wantErr:   nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -179,10 +214,49 @@ func TestInstallerSetClient_Update(t *testing.T) {
 
 			if tt.setType != InstallerTypeMain {
 				assert.Equal(t, updatedISs[0].Annotations[v1alpha1.LastAppliedHashKey], expectedHash)
-			} else {
-				assert.Equal(t, updatedISs[0].Annotations[v1alpha1.LastAppliedHashKey], expectedHash)
-				assert.Equal(t, updatedISs[1].Annotations[v1alpha1.LastAppliedHashKey], expectedHash)
+				return
 			}
+
+			assert.Equal(t, updatedISs[0].Annotations[v1alpha1.LastAppliedHashKey], expectedHash)
+			assert.Equal(t, updatedISs[1].Annotations[v1alpha1.LastAppliedHashKey], expectedHash)
+
+			if tt.name != "update main sets keeps Service with Deployment" {
+				return
+			}
+
+			var staticIS, deploymentIS *v1alpha1.TektonInstallerSet
+			for idx := range updatedISs {
+				is := &updatedISs[idx]
+				switch {
+				case strings.Contains(is.GetName(), InstallerSubTypeStatic):
+					staticIS = is
+				case strings.Contains(is.GetName(), InstallerSubTypeDeployment):
+					deploymentIS = is
+				}
+			}
+			assert.Assert(t, staticIS != nil, "static installer set missing")
+			assert.Assert(t, deploymentIS != nil, "deployment installer set missing")
+
+			assert.Assert(t, !manifestHasKind(staticIS.Spec.Manifests, "Service"),
+				"Service must not be in the static installer set on update")
+			assert.Assert(t, !manifestHasKind(staticIS.Spec.Manifests, "Deployment"),
+				"Deployment must not be in the static installer set on update")
+			assert.Assert(t, manifestHasKind(staticIS.Spec.Manifests, "ServiceAccount"),
+				"ServiceAccount should remain in the static installer set")
+
+			assert.Assert(t, manifestHasKind(deploymentIS.Spec.Manifests, "Service"),
+				"Service must stay in the deployment installer set on update")
+			assert.Assert(t, manifestHasKind(deploymentIS.Spec.Manifests, "Deployment"),
+				"Deployment must stay in the deployment installer set on update")
 		})
 	}
+}
+
+func manifestHasKind(manifests []unstructured.Unstructured, kind string) bool {
+	for _, m := range manifests {
+		if m.GetKind() == kind {
+			return true
+		}
+	}
+	return false
 }
