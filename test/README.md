@@ -1,5 +1,30 @@
 # Tests
 
+## Upgrade tests
+
+Scenario B: install the latest released operator, create workloads, upgrade to
+the current checkout, assert TektonConfig pre/post upgrade versions, then
+re-check workloads.
+
+```bash
+# Cluster already exists
+export E2E_SKIP_CLUSTER_CREATION=true
+export KO_DOCKER_REPO=<container image registry>
+./test/upgrade-tests.sh
+```
+
+Optional: set `UPGRADE_VERSION` (default `upgrade-test-<git-short-sha>`). The
+script patches `VERSION` in the operator Deployment and `tekton-operator-info`
+ConfigMap before `make apply` so upgrade hooks actually run.
+
+### CI
+
+- **Nightly** (periodic): `.github/workflows/upgrade-tests.yml` runs at 02:00 UTC
+  on `main`. It does **not** run on every PR.
+- **On demand on a PR**: comment `/test upgrade` (requires write access). See
+  `.github/workflows/slash.yml`.
+- **Manual**: Actions → "Upgrade tests" → Run workflow.
+
 ## Run E2E Tests Locally
 
 To run run e2e tests locally (outside Tektoncd Plumbing CI):
