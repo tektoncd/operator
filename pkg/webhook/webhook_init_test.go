@@ -19,45 +19,89 @@ const (
 )
 
 func TestCreateWebhookResources(t *testing.T) {
-	t.Run("transform manifest when pod namespace env is set", func(t *testing.T) {
-		namespace_new := "not-the-default-value"
-		testdataPath := filepath.Join("testdata", "validating-defaulting-webhook")
-		m, err := mf.ManifestFrom(mf.Path(testdataPath))
-		assert.NilError(t, err)
-		t.Setenv(POD_NAMESPACE_ENV_KEY, namespace_new)
-		mOut, err := manifestTransform(&m)
-		assert.NilError(t, err)
-		for _, res := range mOut.Resources() {
-			assertServiceNamespace(t, &res, namespace_new)
-		}
+	testdataPath := filepath.Join("testdata", "validating-defaulting-webhook")
 
-	})
-	t.Run("return err when pod namespace env is not set", func(t *testing.T) {
-		testdataPath := filepath.Join("testdata", "validating-defaulting-webhook")
-		m, err := mf.ManifestFrom(mf.Path(testdataPath))
-		assert.NilError(t, err)
-		_, err = manifestTransform(&m)
-		assert.Error(t, err, ErrNamespaceEnvNotSet.Error())
-	})
-}
-
-func assertServiceNamespace(t *testing.T, u *unstructured.Unstructured, ns string) {
-	t.Helper()
-	hooks, _, _ := unstructured.NestedFieldNoCopy(u.Object, "webhooks")
-	for _, hook := range hooks.([]interface{}) {
-		srv, found, err := unstructured.NestedFieldNoCopy(hook.(map[string]interface{}), "clientConfig", "service")
-		if err != nil {
-			assert.NilError(t, err)
-		}
-		if found {
-			m := srv.(map[string]interface{})
-			got := m["namespace"]
-			if got != ns {
-				t.Errorf("expected namespace %q, got %q", ns, got)
-			}
-		}
+	tests := []struct {
+		name                string
+		namespace           string
+		serviceName         string
+		setNamespace        bool
+		setServiceName      bool
+		expectError         bool
+		expectedErrMsg      string
+		expectedNamespace   string
+		expectedServiceName string
+	}{
+		{
+			name:           "error when namespace env not set",
+			setNamespace:   false,
+			setServiceName: false,
+			expectError:    true,
+			expectedErrMsg: ErrNamespaceEnvNotSet.Error(),
+		},
+		{
+			name:                "default service name when WEBHOOK_SERVICE_NAME not set",
+			namespace:           "tekton-operator",
+			setNamespace:        true,
+			setServiceName:      false,
+			expectError:         false,
+			expectedNamespace:   "tekton-operator",
+			expectedServiceName: DEFAULT_WEBHOOK_SERVICE,
+		},
+		{
+			name:                "custom service name from WEBHOOK_SERVICE_NAME env",
+			namespace:           "tekton-operator",
+			serviceName:         "myrelease-tekton-operator-webhook",
+			setNamespace:        true,
+			setServiceName:      true,
+			expectError:         false,
+			expectedNamespace:   "tekton-operator",
+			expectedServiceName: "myrelease-tekton-operator-webhook",
+		},
 	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, err := mf.ManifestFrom(mf.Path(testdataPath))
+			assert.NilError(t, err)
+
+			if tt.setNamespace {
+				t.Setenv(POD_NAMESPACE_ENV_KEY, tt.namespace)
+			}
+			if tt.setServiceName {
+				t.Setenv(WEBHOOK_SERVICE_NAME_KEY, tt.serviceName)
+			}
+
+			mOut, err := manifestTransform(&m)
+			if tt.expectError {
+				assert.Error(t, err, tt.expectedErrMsg)
+				return
+			}
+
+			assert.NilError(t, err)
+
+			// Verify webhook configurations have correct service name and namespace
+			for _, res := range mOut.Resources() {
+				if res.GetKind() != "ValidatingWebhookConfiguration" && res.GetKind() != "MutatingWebhookConfiguration" {
+					continue
+				}
+
+				webhooks, found, _ := unstructured.NestedSlice(res.Object, "webhooks")
+				if !found {
+					continue
+				}
+
+				for _, hook := range webhooks {
+					hookMap := hook.(map[string]interface{})
+					svcName, _, _ := unstructured.NestedString(hookMap, "clientConfig", "service", "name")
+					svcNs, _, _ := unstructured.NestedString(hookMap, "clientConfig", "service", "namespace")
+
+					assert.Equal(t, tt.expectedServiceName, svcName, "service name mismatch")
+					assert.Equal(t, tt.expectedNamespace, svcNs, "namespace mismatch")
+				}
+			}
+		})
+	}
 }
 
 func TestDeleteExistingInstallerSets(t *testing.T) {
