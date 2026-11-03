@@ -13,6 +13,7 @@ import (
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"go.uber.org/zap"
@@ -33,8 +34,10 @@ const (
 	labelCreatedByValue        = "operator-webhook-init"
 	labelInstallerSetTypeValue = "operatorValidatingDefaultingWebhook"
 
-	POD_NAMESPACE_ENV_KEY = "SYSTEM_NAMESPACE"
-	POD_NAME_ENV_KEY      = "WEBHOOK_POD_NAME"
+	POD_NAMESPACE_ENV_KEY    = "SYSTEM_NAMESPACE"
+	POD_NAME_ENV_KEY         = "WEBHOOK_POD_NAME"
+	WEBHOOK_SERVICE_NAME_KEY = "WEBHOOK_SERVICE_NAME"
+	DEFAULT_WEBHOOK_SERVICE  = "tekton-operator-webhook"
 )
 
 var (
@@ -104,13 +107,56 @@ func fetchManifests(ctx context.Context) (*mf.Manifest, error) {
 	return manifestTransform(&manifest)
 }
 
+// replaceWebhookServiceName returns a transformer that replaces the service name
+// in webhook configurations (ValidatingWebhookConfiguration and MutatingWebhookConfiguration)
+func replaceWebhookServiceName(serviceName string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := u.GetKind()
+		if kind != "ValidatingWebhookConfiguration" && kind != "MutatingWebhookConfiguration" {
+			return nil
+		}
+
+		webhooks, found, err := unstructured.NestedSlice(u.Object, "webhooks")
+		if err != nil {
+			return fmt.Errorf("failed to get webhooks field: %w", err)
+		}
+		if !found || len(webhooks) == 0 {
+			return nil
+		}
+
+		for i, hook := range webhooks {
+			webhook, ok := hook.(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("webhook[%d] has invalid type: expected map[string]interface{}, got %T", i, hook)
+			}
+			if err := unstructured.SetNestedField(webhook, serviceName,
+				"clientConfig", "service", "name"); err != nil {
+				return fmt.Errorf("failed to set service name in webhook[%d]: %w", i, err)
+			}
+			webhooks[i] = webhook
+		}
+
+		if err := unstructured.SetNestedSlice(u.Object, webhooks, "webhooks"); err != nil {
+			return fmt.Errorf("failed to update webhooks field: %w", err)
+		}
+		return nil
+	}
+}
+
 func manifestTransform(m *mf.Manifest) (*mf.Manifest, error) {
 	ns, ok := os.LookupEnv(POD_NAMESPACE_ENV_KEY)
 	if !ok || ns == "" {
 		return nil, ErrNamespaceEnvNotSet
 	}
+
+	serviceName := os.Getenv(WEBHOOK_SERVICE_NAME_KEY)
+	if serviceName == "" {
+		serviceName = DEFAULT_WEBHOOK_SERVICE
+	}
+
 	tfs := []mf.Transformer{
 		mf.InjectNamespace(ns),
+		replaceWebhookServiceName(serviceName),
 	}
 	result, err := m.Transform(tfs...)
 	return &result, err
