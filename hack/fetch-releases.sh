@@ -325,6 +325,59 @@ copy_pruner_yaml() {
   cp -r $srcPath $dstPath
 }
 
+# append_openshift_results_postgres ensures db.yaml is present exactly once in the
+# OpenShift results release manifest. Repeated cat >> without a document separator
+# merges the StatefulSet spec into the following ConfigMap and breaks install:
+#   unable to find api field in struct ConfigMap for the json field "spec"
+append_openshift_results_postgres() {
+  local results_file=$1
+  local db_yaml=$2
+  local postgres_cm_count
+  local postgres_line
+  local cut_line
+  local tmp_file
+
+  if [[ ! -f "${db_yaml}" ]]; then
+    echo "Warning: ${db_yaml} not found, skipping OpenShift Results postgres append"
+    return
+  fi
+  if [[ ! -f "${results_file}" ]]; then
+    echo "Error: ${results_file} not found, cannot append postgres manifest"
+    exit 1
+  fi
+
+  # release_base never ships POSTGRES_DB; only our appended db.yaml does.
+  postgres_cm_count=$(grep -c '^  POSTGRES_DB: tekton-results$' "${results_file}" || true)
+
+  if [[ "${postgres_cm_count}" -eq 1 ]]; then
+    echo "PostgreSQL manifest already present in ${results_file}, skipping append"
+    return
+  fi
+
+  if [[ "${postgres_cm_count}" -gt 1 ]]; then
+    echo "Duplicated postgres manifests (${postgres_cm_count}) in ${results_file}, repairing..."
+    postgres_line=$(grep -n '^  POSTGRES_DB: tekton-results$' "${results_file}" | head -1 | cut -d: -f1)
+    # Appended block starts at: apiVersion / data / POSTGRES_DB (2 lines above).
+    cut_line=$((postgres_line - 2))
+    if [[ "${cut_line}" -lt 1 ]]; then
+      echo "Error: cannot locate postgres append start in ${results_file}"
+      exit 1
+    fi
+    # If a --- document separator sits immediately above, drop it too.
+    if [[ "${cut_line}" -gt 1 ]] && [[ "$(sed -n "$((cut_line - 1))p" "${results_file}")" == "---" ]]; then
+      cut_line=$((cut_line - 1))
+    fi
+    tmp_file=$(mktemp)
+    head -n "$((cut_line - 1))" "${results_file}" > "${tmp_file}"
+    mv "${tmp_file}" "${results_file}"
+  fi
+
+  echo "Appending PostgreSQL manifest to main results manifest..."
+  printf '\n---\n' >> "${results_file}"
+  cat "${db_yaml}" >> "${results_file}"
+  echo "PostgreSQL manifest appended to: ${results_file}"
+}
+
 main() {
   TARGET=$1
   CONFIG=${2:=components.yaml}
@@ -348,14 +401,12 @@ main() {
   if [[ ${TARGET} == "openshift" ]]
   then
       release_yaml results release_base 00-results ${r_version}
-      # Append PostgreSQL manifest to main results manifest for OpenShift
-      # PostgreSQL is now part of main reconciliation flow, not PreReconcile
-      results_version_dir=${ko_data}/tekton-results/${r_version//v}
-      if [[ -f "${ko_data}/static/tekton-results/internal-db/db.yaml" ]]; then
-        echo "Appending PostgreSQL manifest to main results manifest..."
-        cat ${ko_data}/static/tekton-results/internal-db/db.yaml >> ${results_version_dir}/00-results.yaml
-        echo "PostgreSQL manifest appended to: ${results_version_dir}/00-results.yaml"
-      fi
+      # Append PostgreSQL manifest to main results manifest for OpenShift.
+      # PostgreSQL is part of main reconciliation (not PreReconcile).
+      ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
+      results_file=${ko_data}/tekton-results/${r_version//v}/00-results.yaml
+      db_yaml=${ko_data}/static/tekton-results/internal-db/db.yaml
+      append_openshift_results_postgres "${results_file}" "${db_yaml}"
   else
       release_yaml results release 00-results ${r_version}
   fi
