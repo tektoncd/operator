@@ -28,6 +28,7 @@ import (
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -187,4 +188,53 @@ func TestUpdateAdditionControllerConfigMap(t *testing.T) {
 	if d := cmp.Diff(cm, expectedCM); d != "" {
 		t.Errorf("failed to update additional pac controller route %s", diff.PrintWantGot(d))
 	}
+}
+
+func TestAdditionalControllerConfigMapRBAC(t *testing.T) {
+	m, err := additionalControllerConfigMapRBAC("test", "test-config", "pac-ns")
+	assert.NilError(t, err)
+	assert.Equal(t, len(m.Resources()), 2)
+
+	roles := m.Filter(mf.ByKind("Role")).Resources()
+	assert.Equal(t, len(roles), 1)
+	role := &rbacv1.Role{}
+	assert.NilError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(roles[0].Object, role))
+	assert.Equal(t, role.Name, "test-pac-controller-configmap")
+	assert.Equal(t, role.Namespace, "pac-ns")
+	assert.DeepEqual(t, role.Rules, []rbacv1.PolicyRule{{
+		APIGroups:     []string{""},
+		Resources:     []string{"configmaps"},
+		ResourceNames: []string{"test-config"},
+		Verbs:         []string{"get", "update", "patch"},
+	}})
+
+	bindings := m.Filter(mf.ByKind("RoleBinding")).Resources()
+	assert.Equal(t, len(bindings), 1)
+	rb := &rbacv1.RoleBinding{}
+	assert.NilError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(bindings[0].Object, rb))
+	assert.Equal(t, rb.RoleRef.Name, role.Name)
+	assert.DeepEqual(t, rb.Subjects, []rbacv1.Subject{{
+		Kind:      "ServiceAccount",
+		Name:      "pipelines-as-code-controller",
+		Namespace: "pac-ns",
+	}})
+}
+
+func TestUpdateAdditionControllerConfigMapPreservesAnnotations(t *testing.T) {
+	const learnedAnnotation = "pipelinesascode.tekton.dev/auto-trusted-provider-hostnames"
+	testData := path.Join("testdata", "test-additional-pac-cm.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	resources := manifest.Resources()
+	resources[0].SetAnnotations(map[string]string{learnedAnnotation: "ghe.example.com"})
+	manifest, err = mf.ManifestFrom(mf.Slice(resources))
+	assert.NilError(t, err)
+
+	updated, err := manifest.Transform(updateAdditionControllerConfigMap(v1alpha1.AdditionalPACControllerConfig{
+		ConfigMapName: "test-config",
+		Settings:      map[string]string{"application-name": "test"},
+	}))
+	assert.NilError(t, err)
+	assert.Equal(t, updated.Resources()[0].GetAnnotations()[learnedAnnotation], "ghe.example.com")
 }
