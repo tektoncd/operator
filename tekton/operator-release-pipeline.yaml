@@ -258,8 +258,9 @@ spec:
       workspace: release-images-secret
 
   - name: publish-images-platform-openshift
+    # Serialize: both publish tasks share the RWO workarea PVC.
     runAfter:
-    - build-test
+    - publish-images-platform-kubernetes
     taskRef:
       resolver: git
       params:
