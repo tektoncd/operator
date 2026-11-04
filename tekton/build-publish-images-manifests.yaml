@@ -104,6 +104,9 @@ spec:
       #!/usr/bin/env sh
       set -ex
 
+      cd ${PROJECT_ROOT}
+      git config --global --add safe.directory "${PROJECT_ROOT}"
+
       # Rewrite VERSION env var value in operator.yaml (not in ko/kustomize output, sed on release.yaml won't catch it)
       # Uses awk for multi-line: match '- name: VERSION', then rewrite the following 'value:' line
       # (avoids reliance on GNU sed which is not available in this image)
@@ -113,11 +116,18 @@ spec:
 
       # Rewrite kodata cabundles (openshift only) - these are baked into the container image
       # and never appear in release.yaml, so must be updated before ko builds the image
-      if [ -d "${PROJECT_ROOT}/cmd/openshift/operator/kodata/cabundles" ]; then
+      if [ "${KUBE_DISTRO}" = "openshift" ] && [ -d "${PROJECT_ROOT}/cmd/openshift/operator/kodata/cabundles" ]; then
         sed -i -E \
           -e 's/(operator.tekton.dev\/release): "?devel"?/\1: $(params.versionTag)/g' \
           ${PROJECT_ROOT}/cmd/openshift/operator/kodata/cabundles/*.yaml
       fi
+
+      # Commit rewrites so ko does not fail on a dirty worktree.
+      git add \
+        "config/${KUBE_DISTRO}/base/operator.yaml" \
+        cmd/openshift/operator/kodata/cabundles/ 2>/dev/null || true
+      git -c user.name=tekton-robot -c user.email=tekton-robot@tekton.dev \
+        commit --allow-empty -m "Rewrite devel to $(params.versionTag) for ${KUBE_DISTRO}"
 
   - name: run-kustomize-ko
     image: ghcr.io/tektoncd/plumbing/ko@sha256:684b1e0f1133582c4b61cff25920b0f937581c6bfaf53d3f896468efa79a38b4
@@ -139,6 +149,9 @@ spec:
 
       # Change to directory with our .ko.yaml
       cd ${PROJECT_ROOT}
+      git config --global --add safe.directory "${PROJECT_ROOT}"
+      SOURCE_DATE_EPOCH=$(git log -1 --format='%ct')
+      export SOURCE_DATE_EPOCH
 
       # For each cmd/<kubeDistro>/* directory, include a full gzipped tar of all source in
       # vendor/. This is overkill. Some deps' licenses require the source to be
