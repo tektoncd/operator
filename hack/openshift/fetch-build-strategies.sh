@@ -82,4 +82,3 @@ find_tag_lte() {
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   find_tag_lte "$@"
 fi
-

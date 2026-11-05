@@ -62,8 +62,18 @@ func FilterAndTransform(reconciler *Reconciler) client.FilterAndTransform {
 	}
 }
 
-// NopFilterAndTransform applies the manifest as-is. It is used for the build
-// strategies post set, which needs no namespace or image rewriting.
+// StrategyFilterAndTransform applies platform adaptations to the bundled strategies.
+func StrategyFilterAndTransform(reconciler *Reconciler) client.FilterAndTransform {
+	return func(_ context.Context, manifest *manifestival.Manifest, component v1alpha1.TektonComponent) (*manifestival.Manifest, error) {
+		transformed, err := manifest.Transform(reconciler.extension.Transformers(component)...)
+		if err != nil {
+			return nil, err
+		}
+		return &transformed, nil
+	}
+}
+
+// NopFilterAndTransform applies the manifest as-is.
 func NopFilterAndTransform() client.FilterAndTransform {
 	return func(ctx context.Context, manifest *manifestival.Manifest, component v1alpha1.TektonComponent) (*manifestival.Manifest, error) {
 		return manifest, nil

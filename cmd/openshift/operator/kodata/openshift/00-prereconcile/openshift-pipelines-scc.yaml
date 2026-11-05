@@ -30,6 +30,9 @@ runAsUser:
   type: RunAsAny
 seLinuxContext:
   type: MustRunAs
+seccompProfiles:
+- runtime/default
+- unconfined
 supplementalGroups:
   type: RunAsAny
 volumes:

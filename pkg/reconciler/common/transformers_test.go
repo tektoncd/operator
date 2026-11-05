@@ -320,6 +320,27 @@ func TestDeploymentImagesRegistryOverrideFallback(t *testing.T) {
 	assertDeployContainersHasImage(t, newManifest.Resources(), "sidecar", "custom-registry.io/custom-path/busybox")
 }
 
+func TestDaemonSetImages_KindAndDecodeErrors(t *testing.T) {
+	for _, kind := range []string{"ConfigMap", "Deployment", "DaemonSet"} {
+		t.Run(kind, func(t *testing.T) {
+			u := &unstructured.Unstructured{Object: map[string]interface{}{
+				"apiVersion": "apps/v1",
+				"kind":       kind,
+				"metadata":   map[string]interface{}{"name": "test"},
+				"spec":       "invalid workload spec",
+			}}
+			before := u.DeepCopy()
+			err := DaemonSetImages(nil)(u)
+			if kind == "DaemonSet" {
+				assert.Assert(t, err != nil)
+			} else {
+				assert.NilError(t, err)
+			}
+			assert.DeepEqual(t, u, before)
+		})
+	}
+}
+
 func TestDeploymentContainerArgsImagesRegistryOverrideFallback(t *testing.T) {
 	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "custom-registry.io/custom-path")
 	// no per-image env var matches any arg in the manifest
