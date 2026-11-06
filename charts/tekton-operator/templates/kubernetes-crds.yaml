@@ -4204,10 +4204,6 @@ spec:
                     type: string
                   logging_plugin_forwarder_delay_duration:
                     type: integer
-                  logging_plugin_json_map:
-                    type: string
-                  logging_plugin_line_format:
-                    type: string
                   logging_plugin_multipart_regex:
                     type: string
                   logging_plugin_namespace_key:
@@ -6148,10 +6144,6 @@ spec:
                 type: string
               logging_plugin_forwarder_delay_duration:
                 type: integer
-              logging_plugin_json_map:
-                type: string
-              logging_plugin_line_format:
-                type: string
               logging_plugin_multipart_regex:
                 type: string
               logging_plugin_namespace_key:

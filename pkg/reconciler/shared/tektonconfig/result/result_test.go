@@ -311,13 +311,11 @@ func TestGetTektonResultCR_PropagatesResultsAPIFields(t *testing.T) {
 			},
 			Result: v1alpha1.Result{
 				ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
-					DBMaxIdleConnections:    &idle,
-					DBMaxOpenConnections:    &open,
-					SQLLogLevel:             "info",
-					FeatureGates:            "PartialResponse=true",
-					Profiling:               &profiling,
-					LoggingPluginJSONMap:    `{"timestamp":"@timestamp"}`,
-					LoggingPluginLineFormat: "{{.timestamp}}: {{.message}}",
+					DBMaxIdleConnections: &idle,
+					DBMaxOpenConnections: &open,
+					SQLLogLevel:          "info",
+					FeatureGates:         "PartialResponse=true",
+					Profiling:            &profiling,
 				},
 				Performance: v1alpha1.PerformanceProperties{
 					DeploymentPerformanceArgs: v1alpha1.DeploymentPerformanceArgs{
@@ -344,12 +342,6 @@ func TestGetTektonResultCR_PropagatesResultsAPIFields(t *testing.T) {
 	}
 	if result.Spec.Profiling == nil || !*result.Spec.Profiling {
 		t.Fatalf("profiling was not copied, got %v", result.Spec.Profiling)
-	}
-	if result.Spec.LoggingPluginJSONMap != `{"timestamp":"@timestamp"}` {
-		t.Fatalf("logging_plugin_json_map was not copied, got %q", result.Spec.LoggingPluginJSONMap)
-	}
-	if result.Spec.LoggingPluginLineFormat != "{{.timestamp}}: {{.message}}" {
-		t.Fatalf("logging_plugin_line_format was not copied, got %q", result.Spec.LoggingPluginLineFormat)
 	}
 	if result.Spec.Performance.KubeApiQPS == nil || *result.Spec.Performance.KubeApiQPS != 25 {
 		t.Fatalf("kube-api-qps was not copied, got %v", result.Spec.Performance.KubeApiQPS)

@@ -834,8 +834,6 @@ func TestUpdateApiConfigNewFields(t *testing.T) {
 				ConverterEnable:           &converter,
 				ConverterDBLimit:          &limit,
 				LoggingPluginContainerKey: "kubernetes.container_name",
-				LoggingPluginJSONMap:      `{"timestamp":"@timestamp"}`,
-				LoggingPluginLineFormat:   "{{.timestamp}}: {{.message}}",
 			},
 		},
 	}
@@ -857,8 +855,6 @@ func TestUpdateApiConfigNewFields(t *testing.T) {
 		"CONVERTER_ENABLE=false",
 		"CONVERTER_DB_LIMIT=50",
 		"LOGGING_PLUGIN_CONTAINER_KEY=",
-		"LOGGING_PLUGIN_JSON_MAP=",
-		"LOGGING_PLUGIN_LINE_FORMAT=",
 		"K8S_QPS=5",
 	}, "\n")
 	cm := configMapWith(t, input)
@@ -881,8 +877,6 @@ func TestUpdateApiConfigNewFields(t *testing.T) {
 		"CONVERTER_ENABLE=true",
 		"CONVERTER_DB_LIMIT=25",
 		"LOGGING_PLUGIN_CONTAINER_KEY=kubernetes.container_name",
-		`LOGGING_PLUGIN_JSON_MAP={"timestamp":"@timestamp"}`,
-		"LOGGING_PLUGIN_LINE_FORMAT={{.timestamp}}: {{.message}}",
 		"K8S_QPS=5",
 	}, "\n"))
 }
@@ -913,8 +907,6 @@ func TestUpdateApiEnvNewFields(t *testing.T) {
 				ConverterEnable:           &converter,
 				ConverterDBLimit:          &limit,
 				LoggingPluginContainerKey: "kubernetes.container_name",
-				LoggingPluginJSONMap:      `{"timestamp":"@timestamp"}`,
-				LoggingPluginLineFormat:   "{{.timestamp}}: {{.message}}",
 			},
 		},
 	}
@@ -944,8 +936,6 @@ func TestUpdateApiEnvNewFields(t *testing.T) {
 	assert.Equal(t, got["CONVERTER_ENABLE"], "false")
 	assert.Equal(t, got["CONVERTER_DB_LIMIT"], "25")
 	assert.Equal(t, got["LOGGING_PLUGIN_CONTAINER_KEY"], "kubernetes.container_name")
-	assert.Equal(t, got["LOGGING_PLUGIN_JSON_MAP"], `{"timestamp":"@timestamp"}`)
-	assert.Equal(t, got["LOGGING_PLUGIN_LINE_FORMAT"], "{{.timestamp}}: {{.message}}")
 
 	// A second pass must not append the same names again.
 	before := len(deploymentContainers(t, dep)[1].Env)
