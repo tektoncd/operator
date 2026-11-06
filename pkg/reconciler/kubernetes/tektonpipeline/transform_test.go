@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -34,6 +35,14 @@ import (
 	apimachineryRuntime "k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/ptr"
 )
+
+// toRawExtension converts any object to runtime.RawExtension for testing
+func toRawExtension(t *testing.T, obj interface{}) apimachineryRuntime.RawExtension {
+	t.Helper()
+	data, err := json.Marshal(obj)
+	require.NoError(t, err)
+	return apimachineryRuntime.RawExtension{Raw: data}
+}
 
 func TestUpdateResolverConfigEnvironmentsInDeployment(t *testing.T) {
 	pipelineCR := &v1alpha1.TektonPipeline{
@@ -333,13 +342,13 @@ func TestValidateStatefulSetOrdinalsAfterOptions(t *testing.T) {
 						},
 					}
 					if test.optionBuckets != "" {
-						pipeline.Spec.Options.ConfigMaps = map[string]corev1.ConfigMap{
-							controller.configMap: {Data: map[string]string{"buckets": test.optionBuckets}},
+						pipeline.Spec.Options.ConfigMaps = map[string]apimachineryRuntime.RawExtension{
+							controller.configMap: toRawExtension(t, corev1.ConfigMap{Data: map[string]string{"buckets": test.optionBuckets}}),
 						}
 					}
 					if test.optionReplicas != nil {
-						pipeline.Spec.Options.StatefulSets = map[string]appsv1.StatefulSet{
-							controller.statefulSet: {Spec: appsv1.StatefulSetSpec{Replicas: test.optionReplicas}},
+						pipeline.Spec.Options.StatefulSets = map[string]apimachineryRuntime.RawExtension{
+							controller.statefulSet: toRawExtension(t, appsv1.StatefulSet{Spec: appsv1.StatefulSetSpec{Replicas: test.optionReplicas}}),
 						}
 					}
 
