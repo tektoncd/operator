@@ -44,6 +44,7 @@ func TestTektonInstallerSetHappyPath(t *testing.T) {
 	apistest.CheckConditionOngoing(tis, NamespaceScoped, t)
 	apistest.CheckConditionOngoing(tis, DeploymentsAvailable, t)
 	apistest.CheckConditionOngoing(tis, StatefulSetReady, t)
+	apistest.CheckConditionOngoing(tis, DaemonSetReady, t)
 	apistest.CheckConditionOngoing(tis, WebhookReady, t)
 	apistest.CheckConditionOngoing(tis, ControllerReady, t)
 	apistest.CheckConditionOngoing(tis, AllDeploymentsReady, t)
@@ -64,6 +65,9 @@ func TestTektonInstallerSetHappyPath(t *testing.T) {
 
 	tis.MarkStatefulSetReady()
 	apistest.CheckConditionSucceeded(tis, StatefulSetReady, t)
+
+	tis.MarkDaemonSetReady()
+	apistest.CheckConditionSucceeded(tis, DaemonSetReady, t)
 
 	tis.MarkJobsInstalled()
 	apistest.CheckConditionSucceeded(tis, JobsInstalled, t)
@@ -95,6 +99,7 @@ func TestTektonInstallerSetErrorPath(t *testing.T) {
 	apistest.CheckConditionOngoing(tis, NamespaceScoped, t)
 	apistest.CheckConditionOngoing(tis, DeploymentsAvailable, t)
 	apistest.CheckConditionOngoing(tis, StatefulSetReady, t)
+	apistest.CheckConditionOngoing(tis, DaemonSetReady, t)
 	apistest.CheckConditionOngoing(tis, WebhookReady, t)
 	apistest.CheckConditionOngoing(tis, ControllerReady, t)
 	apistest.CheckConditionOngoing(tis, AllDeploymentsReady, t)
@@ -118,6 +123,9 @@ func TestTektonInstallerSetErrorPath(t *testing.T) {
 
 	tis.MarkStatefulSetReady()
 	apistest.CheckConditionSucceeded(tis, StatefulSetReady, t)
+
+	tis.MarkDaemonSetReady()
+	apistest.CheckConditionSucceeded(tis, DaemonSetReady, t)
 
 	// Initially Webhook will not be available
 	tis.MarkWebhookNotReady("waiting for pods")

@@ -101,6 +101,7 @@ assemble_helm_crds \
   "operator.tekton.dev_tektonkueues.yaml" \
   "operator.tekton.dev_tektonschedulers.yaml" \
   "operator.tekton.dev_tektonmulticlusterproxyaaes.yaml" \
+  "operator.tekton.dev_shipwrightbuilds.yaml" \
   "operator.tekton.dev_syncerservices.yaml"
 
 assemble_helm_crds \
@@ -119,6 +120,8 @@ assemble_helm_crds \
   "operator.tekton.dev_tektonkueues.yaml" \
   "operator.tekton.dev_tektonschedulers.yaml" \
   "operator.tekton.dev_tektonmulticlusterproxyaaes.yaml" \
+  "operator.tekton.dev_sharedresources.yaml" \
+  "operator.tekton.dev_shipwrightbuilds.yaml" \
   "operator.tekton.dev_syncerservices.yaml"
 
 # Step 2: Validate CRD sizes (etcd has a 256KB object size limit)

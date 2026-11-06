@@ -25,15 +25,16 @@ import (
 	sccSort "github.com/openshift/apiserver-library-go/pkg/securitycontextconstraints/util/sort"
 	security "github.com/openshift/client-go/security/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
 
+// GetSecurityClient returns an OpenShift security client used to manage SCCs for
+// components that need elevated permissions (such as the builds extension).
 func GetSecurityClient(ctx context.Context) security.Interface {
-	restConfig, err := rest.InClusterConfig()
-	if err != nil {
-		logging.FromContext(ctx).Panic(err)
-	}
+	// Use the rest config already established by the injection framework so this
+	// works both in-cluster and in tests, instead of assuming an in-cluster config.
+	restConfig := injection.GetConfig(ctx)
 	securityClient, err := security.NewForConfig(restConfig)
 	if err != nil {
 		logging.FromContext(ctx).Panic(err)

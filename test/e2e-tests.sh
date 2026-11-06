@@ -38,6 +38,11 @@ fi
 
 header "Setting up environment"
 if [ "${E2E_SKIP_OPERATOR_INSTALLATION}" != "true" ]; then
+    # Install cert-manager (Kubernetes only) before the operator so the webhook
+    # certificate dependency is available when components reconcile.
+    if [[ ${TARGET} != "openshift" ]]; then
+      install_cert_manager
+    fi
     install_operator_resources $@
 fi
 
