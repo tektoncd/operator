@@ -94,8 +94,6 @@ spec:
   converter_enable: false
   converter_db_limit: 50
   logging_plugin_container_key: kubernetes.container_name
-  logging_plugin_json_map: '{"timestamp":"@timestamp"}'
-  logging_plugin_line_format: "{{.timestamp}}: {{.message}}"
 ```
 
 `db_max_idle_connections` and `db_max_open_connections` size the Postgres connection pool. `sql_log_level` is the database logger. Use one of `silent`, `error`, `warn`, or `info`. `feature_gates` is a comma-separated list such as `PartialResponse=true`.
@@ -108,7 +106,7 @@ spec:
 
 `converter_enable` starts the job that rewrites older TaskRun and PipelineRun records. `converter_db_limit` is how many records it handles in one transaction.
 
-`logging_plugin_container_key`, `logging_plugin_json_map`, and `logging_plugin_line_format` are for Loki. The JSON map names fields to pull out of a log line. The line format is the template used when a line is returned. The other `logging_plugin_*` fields are described with the Loki section below.
+`logging_plugin_container_key` selects the container name in a Loki log line. The other `logging_plugin_*` fields are described with the Loki section below.
 
 Kubernetes client QPS is `spec.result.performance.kube-api-qps` and `kube-api-burst`. The API receives them as `K8S_QPS` and `K8S_BURST`. The API only accepts a whole number, so a fractional QPS is truncated. The watcher receives the same values as `-qps` and `-burst`, and keeps the fractional QPS. Leave both unset to keep the Results defaults, 5 and 10. The other performance fields (`replicas`, `threads-per-controller`, and so on) still apply to the watcher only.
 

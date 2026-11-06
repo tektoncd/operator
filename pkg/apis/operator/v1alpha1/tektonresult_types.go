@@ -146,8 +146,6 @@ type ResultsAPIProperties struct {
 	LoggingPluginQueryParams            string `json:"logging_plugin_query_params,omitempty"`
 	LoggingPluginMultipartRegex         string `json:"logging_plugin_multipart_regex,omitempty"`
 	LoggingPluginContainerKey           string `json:"logging_plugin_container_key,omitempty"`
-	LoggingPluginJSONMap                string `json:"logging_plugin_json_map,omitempty"`
-	LoggingPluginLineFormat             string `json:"logging_plugin_line_format,omitempty"`
 	ConverterEnable                     *bool  `json:"converter_enable,omitempty"`
 	ConverterDBLimit                    *int64 `json:"converter_db_limit,omitempty"`
 
