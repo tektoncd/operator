@@ -125,9 +125,16 @@ generated: | vendor ; $(info $(M) update generated files) ## Update generated fi
 	$Q ./hack/update-codegen.sh
 
 ##@ CRD Generation
+# Inject preserveUnknownFields: false (the explicit default) right after
+# controller-gen writes generated-crds/: the apiserver fills this field in
+# server-side, so omitting it makes ArgoCD server-side-apply flag every CRD
+# as OutOfSync. Done here, not in sync-helm-crds.sh, so a bare
+# `make generate-crds` cannot silently drop the field from the kustomize
+# source of truth.
 .PHONY: generate-crds
 generate-crds: | $(CONTROLLER_GEN) ; $(info $(M) generating CRDs from Go types…) ## Generate CRD manifests from Go types
 	$Q $(CONTROLLER_GEN) crd:allowDangerousTypes=true paths="./pkg/apis/operator/v1alpha1/..." output:crd:artifacts:config=config/base/generated-crds
+	$Q for f in config/base/generated-crds/*.yaml; do grep -q '^  preserveUnknownFields:' $$f || perl -i -pe 's/^spec:\n/spec:\n  preserveUnknownFields: false\n/' $$f; done
 
 .PHONY: sync-helm-crds
 sync-helm-crds: generate-crds ; $(info $(M) syncing CRDs to config and Helm chart…) ## Sync generated CRDs to config/ and Helm chart
