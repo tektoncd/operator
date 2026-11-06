@@ -31,7 +31,12 @@ func (spec *TektonConfigSpec) MigrateScheduler() bool {
 	if reflect.DeepEqual(spec.Scheduler, Scheduler{}) {
 		return false
 	}
-	if reflect.DeepEqual(spec.Kueue, Kueue{}) {
+	// CRD defaulting can populate the plugin selector before legacy migration.
+	kueue := spec.Kueue
+	if kueue.MultiClusterPlugin == MultiClusterPluginManual {
+		kueue.MultiClusterPlugin = ""
+	}
+	if reflect.DeepEqual(kueue, Kueue{}) {
 		spec.Kueue = spec.Scheduler.ToKueue()
 	}
 	spec.Scheduler = Scheduler{}

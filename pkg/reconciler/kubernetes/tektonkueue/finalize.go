@@ -31,6 +31,9 @@ var _ tektonkueue.Finalizer = (*Reconciler)(nil)
 // FinalizeKind removes all resources after deletion of a TektonKueue CR.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonKueue) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
+	if err := r.extension.Finalize(ctx, original); err != nil {
+		return err
+	}
 
 	// Delete CRDs before deleting rest of resources so that any instance
 	// of CRDs which has finalizer set will get deleted before we remove
@@ -48,10 +51,6 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	if err := r.installerSetClient.CleanupCustomSet(ctx, kueueCustomSet); err != nil {
 		logger.Error("failed to cleanup network policy installerset: ", err)
 		return err
-	}
-
-	if err := r.extension.Finalize(ctx, original); err != nil {
-		logger.Error("Failed to finalize platform resources", err)
 	}
 
 	return nil

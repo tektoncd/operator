@@ -38,8 +38,26 @@ func (ts *TektonKueue) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// execute common spec validations
 	errs = errs.Also(ts.Spec.CommonSpec.validate("spec"))
 	errs = errs.Also(ts.Spec.MultiClusterConfig.validate())
+	errs = errs.Also(ts.Spec.Kueue.validateMultiClusterPlugin("spec.multi-cluster-plugin"))
 	errs = errs.Also(ts.Spec.NetworkPolicy.validate("spec.networkPolicy"))
 	return errs
+}
+
+func (k *Kueue) validateMultiClusterPlugin(field string) *apis.FieldError {
+	switch k.MultiClusterPlugin {
+	case "", MultiClusterPluginManual:
+		return nil
+	case MultiClusterPluginACM:
+		if k.IsDisabled() || k.MultiClusterDisabled {
+			return nil
+		}
+		if !IsOpenShiftPlatform() || !strings.EqualFold(string(k.MultiClusterRole), string(MultiClusterRoleHub)) {
+			return apis.ErrInvalidValue(k.MultiClusterPlugin, field, "acm requires an OpenShift hub with multi-cluster enabled")
+		}
+		return nil
+	default:
+		return apis.ErrInvalidValue(k.MultiClusterPlugin, field, "must be manual or acm")
+	}
 }
 
 func (mcc *MultiClusterConfig) validate() (errs *apis.FieldError) {

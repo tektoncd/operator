@@ -24,14 +24,16 @@ import (
 )
 
 const (
-	KueueConfigMapName                           = common.ConfigMapName
-	KueueConfigInstallerSet                      = "kueue-config"
-	DefaultQueueName                             = "pipelines-queue"
-	DefaultMultiClusterDisabled                  = true
-	DefaultKueueDisabled                         = true
-	KueueCreatedByValue                          = "TektonKueue"
-	MultiClusterRoleSpoke       MultiClusterRole = "Spoke"
-	MultiClusterRoleHub         MultiClusterRole = "Hub"
+	KueueConfigMapName                             = common.ConfigMapName
+	KueueConfigInstallerSet                        = "kueue-config"
+	DefaultQueueName                               = "pipelines-queue"
+	DefaultMultiClusterDisabled                    = true
+	DefaultKueueDisabled                           = true
+	KueueCreatedByValue                            = "TektonKueue"
+	MultiClusterRoleSpoke       MultiClusterRole   = "Spoke"
+	MultiClusterRoleHub         MultiClusterRole   = "Hub"
+	MultiClusterPluginManual    MultiClusterPlugin = "manual"
+	MultiClusterPluginACM       MultiClusterPlugin = "acm"
 )
 
 func (tp *TektonKueue) SetDefaults(_ context.Context) {
@@ -39,6 +41,9 @@ func (tp *TektonKueue) SetDefaults(_ context.Context) {
 }
 
 func (s *Kueue) SetDefaults() {
+	if s.MultiClusterPlugin == "" {
+		s.MultiClusterPlugin = MultiClusterPluginManual
+	}
 	if s.Disabled == nil {
 		s.Disabled = ptr.To(DefaultKueueDisabled)
 		s.MultiClusterDisabled = DefaultMultiClusterDisabled

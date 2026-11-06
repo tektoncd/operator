@@ -66,7 +66,9 @@ func Test_SetDefaults_MigratesDeprecatedScheduler(t *testing.T) {
 
 	tc.SetDefaults(context.TODO())
 
-	if diff := cmp.Diff(legacy.ToKueue(), tc.Spec.Kueue); diff != "" {
+	want := legacy.ToKueue()
+	want.MultiClusterPlugin = MultiClusterPluginManual
+	if diff := cmp.Diff(want, tc.Spec.Kueue); diff != "" {
 		t.Fatalf("migrated kueue config differs (-want, +got): %s", diff)
 	}
 	if diff := cmp.Diff(Scheduler{}, tc.Spec.Scheduler); diff != "" {

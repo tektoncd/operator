@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pipelines-multikueue-plugin-controller
+  namespace: tekton-kueue
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pipelines-multikueue-plugin-controller-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pipelines-multikueue-plugin-controller-role
+subjects:
+- kind: ServiceAccount
+  name: pipelines-multikueue-plugin-controller
+  namespace: tekton-kueue
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pipelines-multikueue-plugin-kueue-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pipelines-multikueue-plugin-kueue-role
+subjects:
+- kind: ServiceAccount
+  name: kueue-controller-manager
+  namespace: openshift-kueue-operator
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pipelines-multikueue-plugin-controller
+  namespace: tekton-kueue
+spec:
+  selector:
+    matchLabels:
+      control-plane: pipelines-multikueue-controller
+  template:
+    metadata:
+      labels:
+        control-plane: pipelines-multikueue-controller
+    spec:
+      serviceAccountName: pipelines-multikueue-plugin-controller
+      containers:
+      - name: controller
+        image: ghcr.io/openshift-pipelines/pipelines-multikueue-controller:v0.1.1

@@ -159,8 +159,8 @@ release_yaml_github() {
   echo "URL to download Release YAML is : $url"
 
     ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
-    # syncer-service uses non-prefixed directory (similar to pruner/manual-approval-gate)
-    if [[ $component == "syncer-service" ]]; then
+    # These components use their repository name without a tekton- prefix.
+    if [[ $component == "syncer-service" || $component == "pipelines-multikueue-plugin" ]]; then
       comp_dir=${ko_data}/${component}
     else
       comp_dir=${ko_data}/tekton-${component}
@@ -435,6 +435,10 @@ main() {
 
   # Tekton Kueue
   release_yaml_github kueue
+
+  if [[ ${TARGET} == "openshift" ]]; then
+    release_yaml_github pipelines-multikueue-plugin
+  fi
 
   # Tekton Multicluster Proxy AAE
   release_yaml_github multicluster-proxy-aae

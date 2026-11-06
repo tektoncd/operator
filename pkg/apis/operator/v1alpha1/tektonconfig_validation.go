@@ -159,6 +159,7 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(tc.Spec.Result.ResultsAPIProperties.validate("spec.result"))
 	errs = errs.Also(tc.Spec.MulticlusterProxyAAE.Options.validate("spec.multiclusterProxyAAE.options"))
 	errs = errs.Also(tc.Spec.ManualApproval.Options.validate("spec.manualApproval.options"))
+	errs = errs.Also(tc.Spec.Kueue.validateMultiClusterPlugin("spec.kueue.multi-cluster-plugin"))
 
 	return errs.Also(tc.Spec.Trigger.TriggersProperties.validate("spec.trigger"))
 }

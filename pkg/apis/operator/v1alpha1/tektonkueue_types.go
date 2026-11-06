@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"strings"
+
 	"github.com/tektoncd/tekton-kueue/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -51,6 +53,11 @@ type Kueue struct {
 	Disabled           *bool `json:"disabled"`
 	KueueConfig        `json:",inline"`
 	MultiClusterConfig `json:",inline"`
+	// MultiClusterPlugin selects how worker clusters are connected to MultiKueue.
+	// +optional
+	// +kubebuilder:default=manual
+	// +kubebuilder:validation:Enum=manual;acm
+	MultiClusterPlugin MultiClusterPlugin `json:"multi-cluster-plugin,omitempty"`
 	// options holds additions fields and these fields will be updated on the manifests
 	// +optional
 	Options AdditionalOptions `json:"options"`
@@ -72,6 +79,8 @@ type MultiClusterConfig struct {
 // MultiClusterRole Define the role of current cluster in multi-cluster environment. The MultiClusterRole
 // can be one of Hub or Spoke
 type MultiClusterRole string
+
+type MultiClusterPlugin string
 
 // TektonKueueList contains a list of TektonKueue
 // +kubebuilder:object:root=true
@@ -118,4 +127,11 @@ func (p *Kueue) IsDisabled() bool {
 		return DefaultKueueDisabled
 	}
 	return *p.Disabled
+}
+
+// IsACMPluginEnabled reports whether the ACM plugin should be installed on this hub.
+func (p *Kueue) IsACMPluginEnabled() bool {
+	return !p.IsDisabled() && !p.MultiClusterDisabled &&
+		strings.EqualFold(string(p.MultiClusterRole), string(MultiClusterRoleHub)) &&
+		p.MultiClusterPlugin == MultiClusterPluginACM
 }

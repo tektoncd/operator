@@ -54,6 +54,7 @@ const (
 	ManualApprovalGatePrefix        = "IMAGE_MAG_"
 	PrunerImagePrefix               = "IMAGE_PRUNER_"
 	KueueImagePrefix                = "IMAGE_KUEUE_"
+	MultiKueuePluginImagePrefix     = "IMAGE_MULTIKUEUE_PLUGIN_"
 	MulticlusterProxyAAEImagePrefix = "IMAGE_MULTICLUSTERPROXYAAE_"
 	SyncerServiceImagePrefix        = "IMAGE_SYNCER_SERVICE_WORKLOAD_"
 	ResultsImagePrefix              = "IMAGE_RESULTS_"

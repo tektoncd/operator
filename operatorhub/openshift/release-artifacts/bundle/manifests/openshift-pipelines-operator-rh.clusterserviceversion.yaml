@@ -1530,6 +1530,8 @@ spec:
                   value: registry.redhat.io/openshift-pipelines/pipelines-scheduler-controller-rhel9@
                 - name: IMAGE_MULTICLUSTERPROXYAAE_PROXY_AAE
                   value: registry.redhat.io/openshift-pipelines/pipelines-multicluster-proxy-aae-rhel9@
+                - name: IMAGE_MULTIKUEUE_PLUGIN_CONTROLLER
+                  value: registry.redhat.io/openshift-pipelines/pipelines-multikueue-controller-rhel9@
                 - name: IMAGE_SYNCER_SERVICE_WORKLOAD_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-syncer-service-rhel9@
                 - name: IMAGE_PRUNER_WEBHOOK
@@ -1804,6 +1806,8 @@ spec:
     name: IMAGE_KUEUE_WEBHOOK
   - image: registry.redhat.io/openshift-pipelines/pipelines-multicluster-proxy-aae-rhel9@
     name: IMAGE_MULTICLUSTERPROXYAAE_PROXY_AAE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-multikueue-controller-rhel9@
+    name: IMAGE_MULTIKUEUE_PLUGIN_CONTROLLER
   - image: registry.redhat.io/openshift-pipelines/pipelines-syncer-service-rhel9@
     name: IMAGE_SYNCER_SERVICE_WORKLOAD_CONTROLLER
   - image: registry.redhat.io/openshift-pipelines/pipelines-pruner-webhook-rhel9@
