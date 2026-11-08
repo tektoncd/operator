@@ -56,7 +56,9 @@ func (oe kubernetesExtension) PostReconcile(ctx context.Context, comp v1alpha1.T
 	}
 
 	if configInstance.Spec.Profile == v1alpha1.ProfileLite || configInstance.Spec.Profile == v1alpha1.ProfileBasic {
-		return extension.EnsureTektonDashboardCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonDashboards())
+		if err := extension.EnsureTektonDashboardCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonDashboards()); err != nil {
+			return err
+		}
 	}
 
 	pacSpec := configInstance.Spec.PipelinesAsCodeForCurrentPlatform()
