@@ -61,7 +61,7 @@ jobs:
 
     - name: Comment that upgrade tests started
       if: github.event_name == 'repository_dispatch'
-      uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+      uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9  # v5.0.0
       with:
         token: ${{ secrets.CHATOPS_TOKEN }}
         repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
@@ -101,19 +101,19 @@ jobs:
 
     - name: Upload test results
       if: always()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
       with:
         name: upgrade-tests-artifacts
         path: ${{ env.ARTIFACTS }}
 
-    - uses: chainguard-dev/actions/kind-diag@84b1be4c638f12d4256ddddef17af98853b6d0d9  # v1.6.40
+    - uses: chainguard-dev/actions/kind-diag@794a2c44abbbd7b3a186db97b359270e4105448f  # v1.8.0
       if: ${{ failure() }}
       with:
         artifact-name: upgrade-tests-logs
 
     - name: Comment result on PR
       if: always() && github.event_name == 'repository_dispatch'
-      uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+      uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9  # v5.0.0
       with:
         token: ${{ secrets.CHATOPS_TOKEN }}
         repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
