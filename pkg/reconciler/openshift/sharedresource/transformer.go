@@ -36,8 +36,9 @@ func FilterAndTransform(reconciler *Reconciler) client.FilterAndTransform {
 
 		transformers := []manifestival.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(OperandName),
-			common.DaemonSetImages(images),
 			common.DeploymentImages(images),
+			common.DaemonSetImages(images),
+			common.DeploymentEnvVarKubernetesMinVersion(),
 			common.AddConfiguration(sr.Spec.Config),
 		}
 

@@ -56,6 +56,14 @@ func TestCreateResources_EnsuresPrerequisites(t *testing.T) {
 	err := r.createResources(context.Background())
 	// InstallerSet does not exist yet → RECONCILE_AGAIN_ERR
 	assert.Equal(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
+	sets, err := operatorClient.OperatorV1alpha1().TektonInstallerSets().List(context.Background(), metav1.ListOptions{})
+	assert.NilError(t, err)
+	assert.Equal(t, len(sets.Items), 1)
+	assert.Equal(t, len(sets.Items[0].Spec.Manifests), 1)
+	var installedSCC securityv1.SecurityContextConstraints
+	assert.NilError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(sets.Items[0].Spec.Manifests[0].Object, &installedSCC))
+	assert.DeepEqual(t, installedSCC.SeccompProfiles, []string{"runtime/default", "unconfined"})
+	assert.Equal(t, installedSCC.AllowPrivilegedContainer, false)
 }
 
 // TestCreateResources_WithInstallerSet verifies that createResources succeeds

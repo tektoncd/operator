@@ -282,7 +282,11 @@ func (i *installer) ensureResources(resources []unstructured.Unstructured, insta
 			continue
 		}
 
-		installManifests, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{r}), mf.UseClient(i.mfClient))
+		client := i.mfClient
+		if r.GetKind() == "CustomResourceDefinition" {
+			client = crdUpdateClient{Client: client}
+		}
+		installManifests, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{r}), mf.UseClient(client))
 		if err != nil {
 			ressourceLogger.Error("failed to create manifest", "error", err)
 			return err

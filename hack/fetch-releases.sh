@@ -2,7 +2,7 @@
 
 set -u -e
 
-declare -r SCRIPT_DIR=$(cd $(dirname "$0")/.. && pwd)
+declare -r SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 TARGET=""
 FORCE_FETCH_RELEASE=""
 
@@ -309,45 +309,91 @@ release_yaml_manualapprovalgate() {
 
 }
 
-release_yaml_custom() {
-  local component=$1; shift;
-  local filenames=("$@")
-  local repository=$(yq .${component}.github ${CONFIG})
-  local version=$(yq .${component}.version ${CONFIG})
-  local destination=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata/${component}/${version//v}
+release_yaml_custom() (
+  set -euo pipefail
 
-  rm -rf "${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata/${component}"
-  mkdir -p ${destination}
+  local component=$1
+  shift
+  local filenames=("$@")
+  local repository version
+  repository=$(yq -er ".[\"${component}\"].github" "${CONFIG}")
+  version=$(yq -er ".[\"${component}\"].version" "${CONFIG}")
+  local version_dir=${version#v}
+  if [[ ! ${component} =~ ^[a-z0-9-]+$ || ! ${version_dir} =~ ^[[:alnum:]][[:alnum:]._-]*$ || ${version} == "null" || ${#filenames[@]} == 0 ]]; then
+    echo "ERROR: invalid component, version, or empty file list for ${component}" >&2
+    return 1
+  fi
+
+  local component_dir=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata/${component}
+  local destination=${component_dir}/${version_dir}
+  local staging
+  mkdir -p "${component_dir%/*}"
+  staging=$(mktemp -d "${component_dir}.fetch-XXXXXX")
+
+  cleanup_custom_release() {
+    local status=$?
+    if [[ -e ${staging}/previous && ! -e ${component_dir} ]]; then
+      if ! mv "${staging}/previous" "${component_dir}"; then
+        echo "ERROR: unable to restore previous payload; preserved at ${staging}/previous" >&2
+        return 1
+      fi
+    fi
+    rm -rf "${staging}"
+    return "${status}"
+  }
+  trap cleanup_custom_release EXIT
+  trap 'exit 1' HUP INT TERM
+
+  mkdir -p "${staging}/payload/${version_dir}"
 
   github_fetch() {
-    echo Fetching '|' component: ${component} '|' file: ${filename} '|' version: ${version}
-    local url="https://github.com/${repository}/releases/download/${version}/${filename}"
-    echo URL: ${url}
-    local http_response=$(curl -s -L -o ${destination}/${filename} -w "%{http_code}" ${url})
-    if [[ $http_response != "200" ]]; then
-       echo "ERROR: failed to get ${filename}, status code: ${http_response}"
-       exit 1
+    local repository=$1 version=$2 filename=$3
+    if [[ ! ${repository} =~ ^[[:alnum:]_.-]+/[[:alnum:]_.-]+$ || ! ${version} =~ ^[[:alnum:]][[:alnum:]._-]*$ || ${version} == "null" || ! ${filename} =~ ^[[:alnum:]][[:alnum:]._-]*$ ]]; then
+      echo "ERROR: invalid release source for ${component}: ${repository} ${version} ${filename}" >&2
+      return 1
     fi
-    echo "INFO: Added ${component}/${filename}:${version} !!"
-    echo ""
+    local url="https://github.com/${repository}/releases/download/${version}/${filename}"
+    local http_response
+    echo "Fetching ${url}"
+    if ! http_response=$(curl --fail --silent --show-error --location --retry 3 --output "${staging}/payload/${version_dir}/${filename}" --write-out "%{http_code}" "${url}"); then
+      echo "ERROR: failed to download ${url}" >&2
+      return 1
+    fi
+    if [[ ${http_response} != "200" ]]; then
+      echo "ERROR: failed to get ${filename}, status code: ${http_response}" >&2
+      return 1
+    fi
+    # Validate the entire stream, not just the final document. Empty separator
+    # documents are allowed, but every resource must have Kubernetes metadata.
+    if ! yq eval-all --exit-status '[select(. != null)] | ((length > 0) and (map(select(tag != "!!map" or (.apiVersion | tag) != "!!str" or .apiVersion == "" or (.kind | tag) != "!!str" or .kind == "" or (.metadata.name | tag) != "!!str" or .metadata.name == "")) | length == 0))' "${staging}/payload/${version_dir}/${filename}" > /dev/null; then
+      echo "ERROR: ${url} is not a non-empty Kubernetes manifest stream" >&2
+      return 1
+    fi
   }
 
+  local filename
   for filename in "${filenames[@]}"; do
-    github_fetch
+    github_fetch "${repository}" "${version}" "${filename}"
   done
 
-  # If TARGET is "openshift", fetch OpenShift specific files
+  # Keep configuration parsing and downloads in this shell so errors cannot be
+  # hidden by a pipeline or subshell. Platform sources retain their own pins.
   if [[ ${TARGET} == "openshift" ]]; then
-    unset filenames
-    yq ".[\"${component}\"].openshift[] | . as \$o | \$o.files[] | \$o.github + \" \" + \$o.version + \" \" + ." "${CONFIG}" |
-    while read -r repository version filenames; do
-      filenames=(${filenames})
-      for filename in "${filenames[@]}"; do
-        github_fetch
-      done
-    done
+    yq --exit-status ".[\"${component}\"].openshift // [] | (map(select(.github == null or .version == null or .files == null or (.files | length) == 0)) | length == 0)" "${CONFIG}" > /dev/null
+    yq -r ".[\"${component}\"].openshift // [] | .[] | . as \$o | \$o.files[] | \$o.github + \" \" + \$o.version + \" \" + ." "${CONFIG}" > "${staging}/openshift-files"
+    while read -r repository version filename; do
+      github_fetch "${repository}" "${version}" "${filename}"
+    done < "${staging}/openshift-files"
   fi
-}
+
+  # Replace only after every source has downloaded and validated. Retain the
+  # previous component until publication succeeds so the EXIT trap can restore it.
+  if [[ -e ${component_dir} ]]; then
+    mv "${component_dir}" "${staging}/previous"
+  fi
+  mv "${staging}/payload" "${component_dir}"
+  echo "INFO: Updated ${component} payload at ${destination}"
+)
 
 fetch_openshift_addon_tasks() {
   fetch_addon_task_script="${SCRIPT_DIR}/hack/openshift"
@@ -499,4 +545,6 @@ main() {
   find cmd/${TARGET}/operator/kodata
 }
 
-main $@
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

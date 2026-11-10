@@ -325,7 +325,7 @@ func JobImages(images map[string]string) mf.Transformer {
 	}
 }
 
-// DaemonSetImages replaces container and args images.
+// DaemonSetImages replaces container, init-container, and args images.
 func DaemonSetImages(images map[string]string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() != "DaemonSet" {
@@ -340,6 +340,7 @@ func DaemonSetImages(images map[string]string) mf.Transformer {
 
 		containers := ds.Spec.Template.Spec.Containers
 		replaceContainerImages(containers, images)
+		replaceContainerImages(ds.Spec.Template.Spec.InitContainers, images)
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ds)
 		if err != nil {

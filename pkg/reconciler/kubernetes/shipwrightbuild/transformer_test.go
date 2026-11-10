@@ -65,6 +65,31 @@ func namespaceResource(t *testing.T) unstructured.Unstructured {
 	}}
 }
 
+type strategyTestExtension struct {
+	common.Extension
+}
+
+func (strategyTestExtension) Transformers(v1alpha1.TektonComponent) []mf.Transformer {
+	return []mf.Transformer{func(resource *unstructured.Unstructured) error {
+		return unstructured.SetNestedField(resource.Object, "Unconfined", "spec", "testProfile")
+	}}
+}
+
+func TestStrategyFilterAndTransform(t *testing.T) {
+	resource := unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "shipwright.io/v1beta1", "kind": "ClusterBuildStrategy",
+		"metadata": map[string]interface{}{"name": "buildah"},
+	}}
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{resource}))
+	util.AssertEqual(t, err, nil)
+	r := &Reconciler{extension: strategyTestExtension{}}
+	out, err := StrategyFilterAndTransform(r)(context.Background(), &manifest, &v1alpha1.ShipwrightBuild{})
+	util.AssertEqual(t, err, nil)
+	profile, _, err := unstructured.NestedString(out.Resources()[0].Object, "spec", "testProfile")
+	util.AssertEqual(t, err, nil)
+	util.AssertEqual(t, profile, "Unconfined")
+}
+
 func TestFilterAndTransform(t *testing.T) {
 	ctx := context.Background()
 	r := &Reconciler{

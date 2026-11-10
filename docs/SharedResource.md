@@ -53,7 +53,8 @@ the operator will add them. The user can later change them as per their need.
  - `enabled`
 
     Enables or disables installation of the SharedResource component. Defaults to
-    `true`. 
+    `true`. Setting it to `false` removes the component's resources on the next
+    reconcile.
 
  - `config`
 

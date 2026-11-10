@@ -142,6 +142,8 @@ func TestUpdateUpgradeVersion(t *testing.T) {
 }
 
 func TestRunPreUpgrade(t *testing.T) {
+	original := preUpgradeMigrations
+	t.Cleanup(func() { preUpgradeMigrations = original })
 	operatorVersion := "0.68.0"
 	ctx := context.TODO()
 	ug := getUpgradeStructWithFakeClients(ctx, operatorVersion)

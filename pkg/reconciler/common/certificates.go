@@ -17,14 +17,19 @@ limitations under the License.
 package common
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
+	"knative.dev/pkg/webhook/certificates/resources"
 )
 
 const (
+
 	// user-provided and system CA certificates
 	TrustedCAConfigMapName   = "config-trusted-cabundle"
 	TrustedCAConfigMapVolume = "config-trusted-cabundle-volume"
@@ -183,4 +188,26 @@ func AddCABundlesToContainerVolumes(c *corev1.Container) {
 			func(v corev1.VolumeMount) string { return v.Name },
 		)
 	}
+}
+
+// NewCertificateSecret creates secret containing a new certificate data for the given
+// Service, Namespace and Duration.
+// Knative's MakeSecret method does the same, but the duration is constrained there.
+func NewCertificateSecret(ctx context.Context, serviceName, secretName, namespace string, duration time.Duration) (*corev1.Secret, error) {
+	serverKey, serverCert, caCert, err := resources.CreateCerts(ctx, serviceName, namespace, time.Now().Add(duration))
+	if err != nil {
+		return nil, err
+	}
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			corev1.TLSPrivateKeyKey:        serverKey,
+			corev1.TLSCertKey:              serverCert,
+			corev1.ServiceAccountRootCAKey: caCert,
+		},
+	}, nil
 }
