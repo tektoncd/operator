@@ -28,16 +28,45 @@ import (
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonMulticlusterProxyAAEInformer provides access to a shared informer and lister for
-// TektonMulticlusterProxyAAEs.
+// TektonMulticlusterProxyAAEs. Prefer using the type-safe variant (see [TypedTektonMulticlusterProxyAAEInformer]).
 type TektonMulticlusterProxyAAEInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() operatorv1alpha1.TektonMulticlusterProxyAAELister
 }
+
+// TypedTektonMulticlusterProxyAAEInformer provides access to a shared informer and lister for
+// TektonMulticlusterProxyAAEs, including the type-safe TypedInformer variant.
+// It is a superset of TektonMulticlusterProxyAAEInformer.
+type TypedTektonMulticlusterProxyAAEInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() TektonMulticlusterProxyAAEIndexInformer
+	Lister() operatorv1alpha1.TektonMulticlusterProxyAAELister
+}
+
+// TektonMulticlusterProxyAAEIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type TektonMulticlusterProxyAAEIndexInformer cache.TypedSharedIndexInformer[*apisoperatorv1alpha1.TektonMulticlusterProxyAAE]
+
+// TektonMulticlusterProxyAAEHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for TektonMulticlusterProxyAAE.
+type TektonMulticlusterProxyAAEHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisoperatorv1alpha1.TektonMulticlusterProxyAAE]
+
+// TektonMulticlusterProxyAAEDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for TektonMulticlusterProxyAAE.
+type TektonMulticlusterProxyAAEDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisoperatorv1alpha1.TektonMulticlusterProxyAAE]
+
+// TektonMulticlusterProxyAAEFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for TektonMulticlusterProxyAAE.
+type TektonMulticlusterProxyAAEFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisoperatorv1alpha1.TektonMulticlusterProxyAAE]
+
+// TektonMulticlusterProxyAAEIndexers is a specialization of [cache.TypedIndexers] for TektonMulticlusterProxyAAE.
+type TektonMulticlusterProxyAAEIndexers = cache.TypedIndexers[*apisoperatorv1alpha1.TektonMulticlusterProxyAAE]
+
+// DeletedTektonMulticlusterProxyAAE is a specialization of [cache.DeletedObject] for TektonMulticlusterProxyAAE.
+type DeletedTektonMulticlusterProxyAAE = cache.DeletedObject[*apisoperatorv1alpha1.TektonMulticlusterProxyAAE]
 
 type tektonMulticlusterProxyAAEInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -47,55 +76,132 @@ type tektonMulticlusterProxyAAEInformer struct {
 // NewTektonMulticlusterProxyAAEInformer constructs a new informer for TektonMulticlusterProxyAAE type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonMulticlusterProxyAAEInformer]).
 func NewTektonMulticlusterProxyAAEInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredTektonMulticlusterProxyAAEInformer(client, resyncPeriod, indexers, nil)
+	return NewTektonMulticlusterProxyAAEInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedTektonMulticlusterProxyAAEInformer constructs a new informer for TektonMulticlusterProxyAAE type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonMulticlusterProxyAAEInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonMulticlusterProxyAAEIndexers) TektonMulticlusterProxyAAEIndexInformer {
+	return NewTypedTektonMulticlusterProxyAAEInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredTektonMulticlusterProxyAAEInformer constructs a new informer for TektonMulticlusterProxyAAE type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredTektonMulticlusterProxyAAEInformer]).
 func NewFilteredTektonMulticlusterProxyAAEInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
+	return NewTypedTektonMulticlusterProxyAAEInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredTektonMulticlusterProxyAAEInformer constructs a new informer for TektonMulticlusterProxyAAE type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredTektonMulticlusterProxyAAEInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonMulticlusterProxyAAEIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) TektonMulticlusterProxyAAEIndexInformer {
+	return NewTypedTektonMulticlusterProxyAAEInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
+}
+
+// NewTektonMulticlusterProxyAAEInformerWithOptions constructs a new informer for TektonMulticlusterProxyAAE type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonMulticlusterProxyAAEInformerWithOptions]).
+func NewTektonMulticlusterProxyAAEInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedTektonMulticlusterProxyAAEInformerWithOptions(client, options)
+}
+
+// NewTypedTektonMulticlusterProxyAAEInformerWithOptions constructs a new informer for TektonMulticlusterProxyAAE type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonMulticlusterProxyAAEInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) TektonMulticlusterProxyAAEIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "operator.tekton.dev", Version: "v1alpha1", Resource: "tektonmulticlusterproxyaaes"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonMulticlusterProxyAAE](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().List(context.Background(), options)
+				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().Watch(context.Background(), options)
+				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().Watch(context.Background(), opts)
 			},
-			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().List(ctx, options)
+				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().List(ctx, opts)
 			},
-			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().Watch(ctx, options)
+				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().Watch(ctx, opts)
 			},
 		}, client),
 		&apisoperatorv1alpha1.TektonMulticlusterProxyAAE{},
-		resyncPeriod,
-		indexers,
-	)
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
+		},
+	))
 }
 
 func (f *tektonMulticlusterProxyAAEInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredTektonMulticlusterProxyAAEInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewTypedTektonMulticlusterProxyAAEInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *tektonMulticlusterProxyAAEInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisoperatorv1alpha1.TektonMulticlusterProxyAAE{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *tektonMulticlusterProxyAAEInformer) TypedInformer() TektonMulticlusterProxyAAEIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonMulticlusterProxyAAE](f.factory.InformerFor(&apisoperatorv1alpha1.TektonMulticlusterProxyAAE{}, f.defaultInformer))
 }
 
 func (f *tektonMulticlusterProxyAAEInformer) Lister() operatorv1alpha1.TektonMulticlusterProxyAAELister {
 	return operatorv1alpha1.NewTektonMulticlusterProxyAAELister(f.Informer().GetIndexer())
+}
+
+// ToTypedTektonMulticlusterProxyAAEInformer converts an untyped informer into a TypedTektonMulticlusterProxyAAEInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonMulticlusterProxyAAE. If that is not the case, calling type-safe methods of the returned
+// TypedTektonMulticlusterProxyAAEInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedTektonMulticlusterProxyAAEInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedTektonMulticlusterProxyAAEInformer(informer TektonMulticlusterProxyAAEInformer) TypedTektonMulticlusterProxyAAEInformer {
+	if informer, ok := informer.(TypedTektonMulticlusterProxyAAEInformer); ok {
+		return informer
+	}
+	return &tektonMulticlusterProxyAAETypedInformerAdapter{informer}
+}
+
+type tektonMulticlusterProxyAAETypedInformerAdapter struct {
+	TektonMulticlusterProxyAAEInformer
+}
+
+func (a *tektonMulticlusterProxyAAETypedInformerAdapter) TypedInformer() TektonMulticlusterProxyAAEIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonMulticlusterProxyAAE](a.Informer())
+}
+
+// ToTektonMulticlusterProxyAAEIndexInformer converts an untyped informer into a TektonMulticlusterProxyAAEIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonMulticlusterProxyAAE. If that is not the case, calling type-safe methods of the returned
+// TektonMulticlusterProxyAAEIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a TektonMulticlusterProxyAAEIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTektonMulticlusterProxyAAEIndexInformer(informer cache.SharedIndexInformer) TektonMulticlusterProxyAAEIndexInformer {
+	if informer, ok := informer.(TektonMulticlusterProxyAAEIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonMulticlusterProxyAAE](informer)
 }

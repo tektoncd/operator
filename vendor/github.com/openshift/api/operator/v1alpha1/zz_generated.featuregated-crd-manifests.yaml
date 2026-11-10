@@ -1,12 +1,12 @@
 clusterapis.operator.openshift.io:
   Annotations:
-    release.openshift.io/feature-gate: ClusterAPIMachineManagement
+    release.openshift.io/feature-gate: ClusterAPIOperator
   ApprovedPRNumber: https://github.com/openshift/api/pull/2564
   CRDName: clusterapis.operator.openshift.io
   Capability: ""
   Category: ""
   FeatureGates:
-  - ClusterAPIMachineManagement
+  - ClusterAPIOperator
   FilenameOperatorName: cluster-api
   FilenameOperatorOrdering: "01"
   FilenameRunLevel: "0000_30"
@@ -19,7 +19,7 @@ clusterapis.operator.openshift.io:
   Scope: Cluster
   ShortNames: null
   TopLevelFeatureGates:
-  - ClusterAPIMachineManagement
+  - ClusterAPIOperator
   Version: v1alpha1
 
 clusterversionoperators.operator.openshift.io:
@@ -47,7 +47,7 @@ clusterversionoperators.operator.openshift.io:
 
 etcdbackups.operator.openshift.io:
   Annotations: {}
-  ApprovedPRNumber: https://github.com/openshift/api/pull/1482
+  ApprovedPRNumber: https://github.com/openshift/api/pull/2952
   CRDName: etcdbackups.operator.openshift.io
   Capability: ""
   Category: ""
@@ -61,7 +61,66 @@ etcdbackups.operator.openshift.io:
   KindName: EtcdBackup
   Labels: {}
   PluralName: etcdbackups
-  PrinterColumns: []
+  PrinterColumns:
+  - description: Type of storage used for the backup
+    jsonPath: .spec.storage.type
+    name: Storage Type
+    type: string
+  - description: Status of the EtcdBackup
+    jsonPath: .status.conditions[?(@.status=="True")].type
+    name: Status
+    type: string
+  - description: Completion time of the EtcdBackup
+    jsonPath: .status.conditions[?(@.type=="Completed")].lastTransitionTime
+    name: Completed At
+    type: date
+  - description: Age of the EtcdBackup
+    jsonPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  Scope: Cluster
+  ShortNames: null
+  TopLevelFeatureGates:
+  - AutomatedEtcdBackup
+  Version: v1alpha1
+
+etcdbackuppolicies.operator.openshift.io:
+  Annotations: {}
+  ApprovedPRNumber: https://github.com/openshift/api/pull/2952
+  CRDName: etcdbackuppolicies.operator.openshift.io
+  Capability: ""
+  Category: ""
+  FeatureGates:
+  - AutomatedEtcdBackup
+  FilenameOperatorName: etcd
+  FilenameOperatorOrdering: "01"
+  FilenameRunLevel: "0000_10"
+  GroupName: operator.openshift.io
+  HasStatus: true
+  KindName: EtcdBackupPolicy
+  Labels: {}
+  PluralName: etcdbackuppolicies
+  PrinterColumns:
+  - description: Type of storage used for the backup
+    jsonPath: .spec.storage.type
+    name: Storage Type
+    type: string
+  - description: Cron schedule for executing backups
+    jsonPath: .spec.schedule
+    name: Schedule
+    type: string
+  - description: Cron time zone for executing backups
+    jsonPath: .spec.timeZone
+    name: TimeZone
+    type: string
+  - description: Status of the EtcdBackupPolicy
+    jsonPath: .status.conditions[?(@.type=="Scheduled")].reason
+    name: Status
+    type: string
+  - description: Age of the EtcdBackupPolicy
+    jsonPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   Scope: Cluster
   ShortNames: null
   TopLevelFeatureGates:
@@ -88,6 +147,29 @@ imagecontentsourcepolicies.operator.openshift.io:
   Scope: Cluster
   ShortNames: null
   TopLevelFeatureGates: []
+  Version: v1alpha1
+
+ingresses.operator.openshift.io:
+  Annotations: {}
+  ApprovedPRNumber: https://github.com/openshift/api/pull/2890
+  CRDName: ingresses.operator.openshift.io
+  Capability: Ingress
+  Category: ""
+  FeatureGates:
+  - GatewayAPIManagementMode
+  FilenameOperatorName: ingress
+  FilenameOperatorOrdering: "02"
+  FilenameRunLevel: "0000_50"
+  GroupName: operator.openshift.io
+  HasStatus: true
+  KindName: Ingress
+  Labels: {}
+  PluralName: ingresses
+  PrinterColumns: []
+  Scope: Cluster
+  ShortNames: null
+  TopLevelFeatureGates:
+  - GatewayAPIManagementMode
   Version: v1alpha1
 
 olms.operator.openshift.io:

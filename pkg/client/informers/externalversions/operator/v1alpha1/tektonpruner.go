@@ -28,16 +28,45 @@ import (
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonPrunerInformer provides access to a shared informer and lister for
-// TektonPruners.
+// TektonPruners. Prefer using the type-safe variant (see [TypedTektonPrunerInformer]).
 type TektonPrunerInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() operatorv1alpha1.TektonPrunerLister
 }
+
+// TypedTektonPrunerInformer provides access to a shared informer and lister for
+// TektonPruners, including the type-safe TypedInformer variant.
+// It is a superset of TektonPrunerInformer.
+type TypedTektonPrunerInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() TektonPrunerIndexInformer
+	Lister() operatorv1alpha1.TektonPrunerLister
+}
+
+// TektonPrunerIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type TektonPrunerIndexInformer cache.TypedSharedIndexInformer[*apisoperatorv1alpha1.TektonPruner]
+
+// TektonPrunerHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for TektonPruner.
+type TektonPrunerHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisoperatorv1alpha1.TektonPruner]
+
+// TektonPrunerDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for TektonPruner.
+type TektonPrunerDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisoperatorv1alpha1.TektonPruner]
+
+// TektonPrunerFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for TektonPruner.
+type TektonPrunerFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisoperatorv1alpha1.TektonPruner]
+
+// TektonPrunerIndexers is a specialization of [cache.TypedIndexers] for TektonPruner.
+type TektonPrunerIndexers = cache.TypedIndexers[*apisoperatorv1alpha1.TektonPruner]
+
+// DeletedTektonPruner is a specialization of [cache.DeletedObject] for TektonPruner.
+type DeletedTektonPruner = cache.DeletedObject[*apisoperatorv1alpha1.TektonPruner]
 
 type tektonPrunerInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -47,55 +76,132 @@ type tektonPrunerInformer struct {
 // NewTektonPrunerInformer constructs a new informer for TektonPruner type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonPrunerInformer]).
 func NewTektonPrunerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredTektonPrunerInformer(client, resyncPeriod, indexers, nil)
+	return NewTektonPrunerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedTektonPrunerInformer constructs a new informer for TektonPruner type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonPrunerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonPrunerIndexers) TektonPrunerIndexInformer {
+	return NewTypedTektonPrunerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredTektonPrunerInformer constructs a new informer for TektonPruner type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredTektonPrunerInformer]).
 func NewFilteredTektonPrunerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
+	return NewTypedTektonPrunerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredTektonPrunerInformer constructs a new informer for TektonPruner type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredTektonPrunerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonPrunerIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) TektonPrunerIndexInformer {
+	return NewTypedTektonPrunerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
+}
+
+// NewTektonPrunerInformerWithOptions constructs a new informer for TektonPruner type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonPrunerInformerWithOptions]).
+func NewTektonPrunerInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedTektonPrunerInformerWithOptions(client, options)
+}
+
+// NewTypedTektonPrunerInformerWithOptions constructs a new informer for TektonPruner type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonPrunerInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) TektonPrunerIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "operator.tekton.dev", Version: "v1alpha1", Resource: "tektonpruners"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonPruner](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonPruners().List(context.Background(), options)
+				return client.OperatorV1alpha1().TektonPruners().List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonPruners().Watch(context.Background(), options)
+				return client.OperatorV1alpha1().TektonPruners().Watch(context.Background(), opts)
 			},
-			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonPruners().List(ctx, options)
+				return client.OperatorV1alpha1().TektonPruners().List(ctx, opts)
 			},
-			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonPruners().Watch(ctx, options)
+				return client.OperatorV1alpha1().TektonPruners().Watch(ctx, opts)
 			},
 		}, client),
 		&apisoperatorv1alpha1.TektonPruner{},
-		resyncPeriod,
-		indexers,
-	)
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
+		},
+	))
 }
 
 func (f *tektonPrunerInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredTektonPrunerInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewTypedTektonPrunerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *tektonPrunerInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisoperatorv1alpha1.TektonPruner{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *tektonPrunerInformer) TypedInformer() TektonPrunerIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonPruner](f.factory.InformerFor(&apisoperatorv1alpha1.TektonPruner{}, f.defaultInformer))
 }
 
 func (f *tektonPrunerInformer) Lister() operatorv1alpha1.TektonPrunerLister {
 	return operatorv1alpha1.NewTektonPrunerLister(f.Informer().GetIndexer())
+}
+
+// ToTypedTektonPrunerInformer converts an untyped informer into a TypedTektonPrunerInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonPruner. If that is not the case, calling type-safe methods of the returned
+// TypedTektonPrunerInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedTektonPrunerInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedTektonPrunerInformer(informer TektonPrunerInformer) TypedTektonPrunerInformer {
+	if informer, ok := informer.(TypedTektonPrunerInformer); ok {
+		return informer
+	}
+	return &tektonPrunerTypedInformerAdapter{informer}
+}
+
+type tektonPrunerTypedInformerAdapter struct {
+	TektonPrunerInformer
+}
+
+func (a *tektonPrunerTypedInformerAdapter) TypedInformer() TektonPrunerIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonPruner](a.Informer())
+}
+
+// ToTektonPrunerIndexInformer converts an untyped informer into a TektonPrunerIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonPruner. If that is not the case, calling type-safe methods of the returned
+// TektonPrunerIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a TektonPrunerIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTektonPrunerIndexInformer(informer cache.SharedIndexInformer) TektonPrunerIndexInformer {
+	if informer, ok := informer.(TektonPrunerIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonPruner](informer)
 }

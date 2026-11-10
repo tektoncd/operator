@@ -28,16 +28,45 @@ import (
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonSchedulerInformer provides access to a shared informer and lister for
-// TektonSchedulers.
+// TektonSchedulers. Prefer using the type-safe variant (see [TypedTektonSchedulerInformer]).
 type TektonSchedulerInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() operatorv1alpha1.TektonSchedulerLister
 }
+
+// TypedTektonSchedulerInformer provides access to a shared informer and lister for
+// TektonSchedulers, including the type-safe TypedInformer variant.
+// It is a superset of TektonSchedulerInformer.
+type TypedTektonSchedulerInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() TektonSchedulerIndexInformer
+	Lister() operatorv1alpha1.TektonSchedulerLister
+}
+
+// TektonSchedulerIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type TektonSchedulerIndexInformer cache.TypedSharedIndexInformer[*apisoperatorv1alpha1.TektonScheduler]
+
+// TektonSchedulerHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for TektonScheduler.
+type TektonSchedulerHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisoperatorv1alpha1.TektonScheduler]
+
+// TektonSchedulerDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for TektonScheduler.
+type TektonSchedulerDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisoperatorv1alpha1.TektonScheduler]
+
+// TektonSchedulerFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for TektonScheduler.
+type TektonSchedulerFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisoperatorv1alpha1.TektonScheduler]
+
+// TektonSchedulerIndexers is a specialization of [cache.TypedIndexers] for TektonScheduler.
+type TektonSchedulerIndexers = cache.TypedIndexers[*apisoperatorv1alpha1.TektonScheduler]
+
+// DeletedTektonScheduler is a specialization of [cache.DeletedObject] for TektonScheduler.
+type DeletedTektonScheduler = cache.DeletedObject[*apisoperatorv1alpha1.TektonScheduler]
 
 type tektonSchedulerInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -47,55 +76,132 @@ type tektonSchedulerInformer struct {
 // NewTektonSchedulerInformer constructs a new informer for TektonScheduler type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonSchedulerInformer]).
 func NewTektonSchedulerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredTektonSchedulerInformer(client, resyncPeriod, indexers, nil)
+	return NewTektonSchedulerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedTektonSchedulerInformer constructs a new informer for TektonScheduler type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonSchedulerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonSchedulerIndexers) TektonSchedulerIndexInformer {
+	return NewTypedTektonSchedulerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredTektonSchedulerInformer constructs a new informer for TektonScheduler type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredTektonSchedulerInformer]).
 func NewFilteredTektonSchedulerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
+	return NewTypedTektonSchedulerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredTektonSchedulerInformer constructs a new informer for TektonScheduler type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredTektonSchedulerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonSchedulerIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) TektonSchedulerIndexInformer {
+	return NewTypedTektonSchedulerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
+}
+
+// NewTektonSchedulerInformerWithOptions constructs a new informer for TektonScheduler type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonSchedulerInformerWithOptions]).
+func NewTektonSchedulerInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedTektonSchedulerInformerWithOptions(client, options)
+}
+
+// NewTypedTektonSchedulerInformerWithOptions constructs a new informer for TektonScheduler type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonSchedulerInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) TektonSchedulerIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "operator.tekton.dev", Version: "v1alpha1", Resource: "tektonschedulers"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonScheduler](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonSchedulers().List(context.Background(), options)
+				return client.OperatorV1alpha1().TektonSchedulers().List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonSchedulers().Watch(context.Background(), options)
+				return client.OperatorV1alpha1().TektonSchedulers().Watch(context.Background(), opts)
 			},
-			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonSchedulers().List(ctx, options)
+				return client.OperatorV1alpha1().TektonSchedulers().List(ctx, opts)
 			},
-			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonSchedulers().Watch(ctx, options)
+				return client.OperatorV1alpha1().TektonSchedulers().Watch(ctx, opts)
 			},
 		}, client),
 		&apisoperatorv1alpha1.TektonScheduler{},
-		resyncPeriod,
-		indexers,
-	)
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
+		},
+	))
 }
 
 func (f *tektonSchedulerInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredTektonSchedulerInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewTypedTektonSchedulerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *tektonSchedulerInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisoperatorv1alpha1.TektonScheduler{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *tektonSchedulerInformer) TypedInformer() TektonSchedulerIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonScheduler](f.factory.InformerFor(&apisoperatorv1alpha1.TektonScheduler{}, f.defaultInformer))
 }
 
 func (f *tektonSchedulerInformer) Lister() operatorv1alpha1.TektonSchedulerLister {
 	return operatorv1alpha1.NewTektonSchedulerLister(f.Informer().GetIndexer())
+}
+
+// ToTypedTektonSchedulerInformer converts an untyped informer into a TypedTektonSchedulerInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonScheduler. If that is not the case, calling type-safe methods of the returned
+// TypedTektonSchedulerInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedTektonSchedulerInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedTektonSchedulerInformer(informer TektonSchedulerInformer) TypedTektonSchedulerInformer {
+	if informer, ok := informer.(TypedTektonSchedulerInformer); ok {
+		return informer
+	}
+	return &tektonSchedulerTypedInformerAdapter{informer}
+}
+
+type tektonSchedulerTypedInformerAdapter struct {
+	TektonSchedulerInformer
+}
+
+func (a *tektonSchedulerTypedInformerAdapter) TypedInformer() TektonSchedulerIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonScheduler](a.Informer())
+}
+
+// ToTektonSchedulerIndexInformer converts an untyped informer into a TektonSchedulerIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonScheduler. If that is not the case, calling type-safe methods of the returned
+// TektonSchedulerIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a TektonSchedulerIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTektonSchedulerIndexInformer(informer cache.SharedIndexInformer) TektonSchedulerIndexInformer {
+	if informer, ok := informer.(TektonSchedulerIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonScheduler](informer)
 }

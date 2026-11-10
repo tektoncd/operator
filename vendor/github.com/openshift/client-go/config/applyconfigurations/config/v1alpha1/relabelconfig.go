@@ -18,7 +18,10 @@ type RelabelConfigApplyConfiguration struct {
 	// When omitted, the rule operates without extracting source labels (useful for actions like labelmap).
 	// Minimum of 1 and maximum of 10 source labels can be specified, each between 1 and 128 characters.
 	// Each entry must be unique.
-	// Label names beginning with "__" (two underscores) are reserved for internal Prometheus use and are not allowed.
+	// Labels beginning with "__" (two underscores) are Prometheus internal/meta labels
+	// (e.g., __name__, __address__) and are valid in sourceLabels because relabeling reads
+	// from them before they are stripped. Using __name__ in sourceLabels is the standard way
+	// to filter metrics by name in writeRelabelConfigs.
 	// Label names SHOULD start with a letter (a-z, A-Z) or underscore (_), followed by zero or more letters, digits (0-9), or underscores for best compatibility.
 	// While Prometheus supports UTF-8 characters in label names (since v3.0.0), using the recommended character set
 	// ensures better compatibility with the wider ecosystem (tooling, third-party instrumentation, etc.).
@@ -33,7 +36,7 @@ type RelabelConfigApplyConfiguration struct {
 	// Must be a valid RE2 regular expression (https://github.com/google/re2/wiki/Syntax).
 	// When omitted, this means no opinion and the platform is left to choose a reasonable default, which is subject to change over time.
 	// The default value is "(.*)" to match everything.
-	// Must be between 1 and 1000 characters in length when specified.
+	// Must be between 1 and 8192 characters in length when specified.
 	Regex *string `json:"regex,omitempty"`
 	// action defines the action to perform on the matched labels and its configuration.
 	// Exactly one action-specific configuration must be specified based on the action type.

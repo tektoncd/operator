@@ -28,16 +28,45 @@ import (
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonInstallerSetInformer provides access to a shared informer and lister for
-// TektonInstallerSets.
+// TektonInstallerSets. Prefer using the type-safe variant (see [TypedTektonInstallerSetInformer]).
 type TektonInstallerSetInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() operatorv1alpha1.TektonInstallerSetLister
 }
+
+// TypedTektonInstallerSetInformer provides access to a shared informer and lister for
+// TektonInstallerSets, including the type-safe TypedInformer variant.
+// It is a superset of TektonInstallerSetInformer.
+type TypedTektonInstallerSetInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() TektonInstallerSetIndexInformer
+	Lister() operatorv1alpha1.TektonInstallerSetLister
+}
+
+// TektonInstallerSetIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type TektonInstallerSetIndexInformer cache.TypedSharedIndexInformer[*apisoperatorv1alpha1.TektonInstallerSet]
+
+// TektonInstallerSetHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for TektonInstallerSet.
+type TektonInstallerSetHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisoperatorv1alpha1.TektonInstallerSet]
+
+// TektonInstallerSetDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for TektonInstallerSet.
+type TektonInstallerSetDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisoperatorv1alpha1.TektonInstallerSet]
+
+// TektonInstallerSetFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for TektonInstallerSet.
+type TektonInstallerSetFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisoperatorv1alpha1.TektonInstallerSet]
+
+// TektonInstallerSetIndexers is a specialization of [cache.TypedIndexers] for TektonInstallerSet.
+type TektonInstallerSetIndexers = cache.TypedIndexers[*apisoperatorv1alpha1.TektonInstallerSet]
+
+// DeletedTektonInstallerSet is a specialization of [cache.DeletedObject] for TektonInstallerSet.
+type DeletedTektonInstallerSet = cache.DeletedObject[*apisoperatorv1alpha1.TektonInstallerSet]
 
 type tektonInstallerSetInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -47,55 +76,132 @@ type tektonInstallerSetInformer struct {
 // NewTektonInstallerSetInformer constructs a new informer for TektonInstallerSet type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonInstallerSetInformer]).
 func NewTektonInstallerSetInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredTektonInstallerSetInformer(client, resyncPeriod, indexers, nil)
+	return NewTektonInstallerSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedTektonInstallerSetInformer constructs a new informer for TektonInstallerSet type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonInstallerSetInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonInstallerSetIndexers) TektonInstallerSetIndexInformer {
+	return NewTypedTektonInstallerSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredTektonInstallerSetInformer constructs a new informer for TektonInstallerSet type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredTektonInstallerSetInformer]).
 func NewFilteredTektonInstallerSetInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
+	return NewTypedTektonInstallerSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredTektonInstallerSetInformer constructs a new informer for TektonInstallerSet type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredTektonInstallerSetInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonInstallerSetIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) TektonInstallerSetIndexInformer {
+	return NewTypedTektonInstallerSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
+}
+
+// NewTektonInstallerSetInformerWithOptions constructs a new informer for TektonInstallerSet type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonInstallerSetInformerWithOptions]).
+func NewTektonInstallerSetInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedTektonInstallerSetInformerWithOptions(client, options)
+}
+
+// NewTypedTektonInstallerSetInformerWithOptions constructs a new informer for TektonInstallerSet type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonInstallerSetInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) TektonInstallerSetIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "operator.tekton.dev", Version: "v1alpha1", Resource: "tektoninstallersets"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonInstallerSet](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonInstallerSets().List(context.Background(), options)
+				return client.OperatorV1alpha1().TektonInstallerSets().List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonInstallerSets().Watch(context.Background(), options)
+				return client.OperatorV1alpha1().TektonInstallerSets().Watch(context.Background(), opts)
 			},
-			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonInstallerSets().List(ctx, options)
+				return client.OperatorV1alpha1().TektonInstallerSets().List(ctx, opts)
 			},
-			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonInstallerSets().Watch(ctx, options)
+				return client.OperatorV1alpha1().TektonInstallerSets().Watch(ctx, opts)
 			},
 		}, client),
 		&apisoperatorv1alpha1.TektonInstallerSet{},
-		resyncPeriod,
-		indexers,
-	)
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
+		},
+	))
 }
 
 func (f *tektonInstallerSetInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredTektonInstallerSetInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewTypedTektonInstallerSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *tektonInstallerSetInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisoperatorv1alpha1.TektonInstallerSet{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *tektonInstallerSetInformer) TypedInformer() TektonInstallerSetIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonInstallerSet](f.factory.InformerFor(&apisoperatorv1alpha1.TektonInstallerSet{}, f.defaultInformer))
 }
 
 func (f *tektonInstallerSetInformer) Lister() operatorv1alpha1.TektonInstallerSetLister {
 	return operatorv1alpha1.NewTektonInstallerSetLister(f.Informer().GetIndexer())
+}
+
+// ToTypedTektonInstallerSetInformer converts an untyped informer into a TypedTektonInstallerSetInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonInstallerSet. If that is not the case, calling type-safe methods of the returned
+// TypedTektonInstallerSetInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedTektonInstallerSetInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedTektonInstallerSetInformer(informer TektonInstallerSetInformer) TypedTektonInstallerSetInformer {
+	if informer, ok := informer.(TypedTektonInstallerSetInformer); ok {
+		return informer
+	}
+	return &tektonInstallerSetTypedInformerAdapter{informer}
+}
+
+type tektonInstallerSetTypedInformerAdapter struct {
+	TektonInstallerSetInformer
+}
+
+func (a *tektonInstallerSetTypedInformerAdapter) TypedInformer() TektonInstallerSetIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonInstallerSet](a.Informer())
+}
+
+// ToTektonInstallerSetIndexInformer converts an untyped informer into a TektonInstallerSetIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonInstallerSet. If that is not the case, calling type-safe methods of the returned
+// TektonInstallerSetIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a TektonInstallerSetIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTektonInstallerSetIndexInformer(informer cache.SharedIndexInformer) TektonInstallerSetIndexInformer {
+	if informer, ok := informer.(TektonInstallerSetIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonInstallerSet](informer)
 }

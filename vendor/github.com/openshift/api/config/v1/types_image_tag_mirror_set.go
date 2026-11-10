@@ -85,7 +85,7 @@ type ImageTagMirrorSetList struct {
 // ImageTagMirrors holds cluster-wide information about how to handle mirrors in the registries config.
 type ImageTagMirrors struct {
 	// source matches the repository that users refer to, e.g. in image pull specifications. Setting source to a registry hostname
-	// e.g. docker.io. quay.io, or registry.redhat.io, will match the image pull specification of corressponding registry.
+	// e.g. docker.io. quay.io, or registry.redhat.io, will match the image pull specification of corresponding registry.
 	// "source" uses one of the following formats:
 	// host[:port]
 	// host[:port]/namespace[/namespace…]

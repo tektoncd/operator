@@ -4,6 +4,7 @@ package v1
 
 import (
 	configv1 "github.com/openshift/api/config/v1"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	metav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
@@ -64,6 +65,20 @@ type IngressControllerStatusApplyConfiguration struct {
 	NamespaceSelector *metav1.LabelSelectorApplyConfiguration `json:"namespaceSelector,omitempty"`
 	// routeSelector is the actual routeSelector in use.
 	RouteSelector *metav1.LabelSelectorApplyConfiguration `json:"routeSelector,omitempty"`
+	// effectiveHAProxyVersion reports the HAProxy version currently in use by
+	// this IngressController. This reflects the resolved value of the
+	// spec.haproxyVersion field. When omitted, the effective value has not yet
+	// been resolved by the operator or the feature is not enabled for this cluster.
+	//
+	// Examples for OpenShift 5.1:
+	// - "3.2": Using the default HAProxy 3.2
+	// - "3.4": Using the explicitly selected, non-default HAProxy 3.4
+	//
+	// Planned lifecycle for later OpenShift releases:
+	// - OpenShift 5.2 plans to make HAProxy 3.4 the default while keeping
+	// HAProxy 3.2 selectable.
+	// - OpenShift 5.3 plans to retire HAProxy 3.2.
+	EffectiveHAProxyVersion *operatorv1.HAProxyVersion `json:"effectiveHAProxyVersion,omitempty"`
 }
 
 // IngressControllerStatusApplyConfiguration constructs a declarative configuration of the IngressControllerStatus type for use with
@@ -146,5 +161,13 @@ func (b *IngressControllerStatusApplyConfiguration) WithNamespaceSelector(value 
 // If called multiple times, the RouteSelector field is set to the value of the last call.
 func (b *IngressControllerStatusApplyConfiguration) WithRouteSelector(value *metav1.LabelSelectorApplyConfiguration) *IngressControllerStatusApplyConfiguration {
 	b.RouteSelector = value
+	return b
+}
+
+// WithEffectiveHAProxyVersion sets the EffectiveHAProxyVersion field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the EffectiveHAProxyVersion field is set to the value of the last call.
+func (b *IngressControllerStatusApplyConfiguration) WithEffectiveHAProxyVersion(value operatorv1.HAProxyVersion) *IngressControllerStatusApplyConfiguration {
+	b.EffectiveHAProxyVersion = &value
 	return b
 }

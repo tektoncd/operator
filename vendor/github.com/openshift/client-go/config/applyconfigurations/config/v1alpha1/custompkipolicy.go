@@ -5,11 +5,15 @@ package v1alpha1
 // CustomPKIPolicyApplyConfiguration represents a declarative configuration of the CustomPKIPolicy type for use
 // with apply.
 //
-// CustomPKIPolicy contains administrator-specified cryptographic configuration.
-// Administrators must specify defaults for all certificates and may optionally
-// override specific categories of certificates.
+// CustomPKIPolicy contains administrator-specified cryptographic configuration,
+// wrapping a PKIProfile. When set, at least one property must be specified.
+//
+// Deprecated: the wrapped fields were flattened into PKICertificatePolicy.
 type CustomPKIPolicyApplyConfiguration struct {
-	PKIProfileApplyConfiguration `json:",inline"`
+	// PKIProfile holds the administrator-specified certificate generation parameters.
+	//
+	// Deprecated: use PKICertificatePolicy instead.
+	PKIProfileApplyConfiguration `json:""`
 }
 
 // CustomPKIPolicyApplyConfiguration constructs a declarative configuration of the CustomPKIPolicy type for use with
@@ -21,7 +25,7 @@ func CustomPKIPolicy() *CustomPKIPolicyApplyConfiguration {
 // WithDefaults sets the Defaults field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Defaults field is set to the value of the last call.
-func (b *CustomPKIPolicyApplyConfiguration) WithDefaults(value *DefaultCertificateConfigApplyConfiguration) *CustomPKIPolicyApplyConfiguration {
+func (b *CustomPKIPolicyApplyConfiguration) WithDefaults(value *PKIDefaultCertificateConfigApplyConfiguration) *CustomPKIPolicyApplyConfiguration {
 	b.PKIProfileApplyConfiguration.Defaults = value
 	return b
 }
@@ -29,7 +33,7 @@ func (b *CustomPKIPolicyApplyConfiguration) WithDefaults(value *DefaultCertifica
 // WithSignerCertificates sets the SignerCertificates field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SignerCertificates field is set to the value of the last call.
-func (b *CustomPKIPolicyApplyConfiguration) WithSignerCertificates(value *CertificateConfigApplyConfiguration) *CustomPKIPolicyApplyConfiguration {
+func (b *CustomPKIPolicyApplyConfiguration) WithSignerCertificates(value *PKICertificateConfigApplyConfiguration) *CustomPKIPolicyApplyConfiguration {
 	b.PKIProfileApplyConfiguration.SignerCertificates = value
 	return b
 }
@@ -37,7 +41,7 @@ func (b *CustomPKIPolicyApplyConfiguration) WithSignerCertificates(value *Certif
 // WithServingCertificates sets the ServingCertificates field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ServingCertificates field is set to the value of the last call.
-func (b *CustomPKIPolicyApplyConfiguration) WithServingCertificates(value *CertificateConfigApplyConfiguration) *CustomPKIPolicyApplyConfiguration {
+func (b *CustomPKIPolicyApplyConfiguration) WithServingCertificates(value *PKICertificateConfigApplyConfiguration) *CustomPKIPolicyApplyConfiguration {
 	b.PKIProfileApplyConfiguration.ServingCertificates = value
 	return b
 }
@@ -45,7 +49,7 @@ func (b *CustomPKIPolicyApplyConfiguration) WithServingCertificates(value *Certi
 // WithClientCertificates sets the ClientCertificates field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ClientCertificates field is set to the value of the last call.
-func (b *CustomPKIPolicyApplyConfiguration) WithClientCertificates(value *CertificateConfigApplyConfiguration) *CustomPKIPolicyApplyConfiguration {
+func (b *CustomPKIPolicyApplyConfiguration) WithClientCertificates(value *PKICertificateConfigApplyConfiguration) *CustomPKIPolicyApplyConfiguration {
 	b.PKIProfileApplyConfiguration.ClientCertificates = value
 	return b
 }

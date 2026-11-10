@@ -35,6 +35,12 @@ type OpenStackPlatformSpecApplyConfiguration struct {
 	// nodes. Each network is provided in the CIDR format and should be IPv4 or IPv6,
 	// for example "10.0.0.0/8" or "fd00::/8".
 	MachineNetworks []configv1.CIDR `json:"machineNetworks,omitempty"`
+	// maxAllowedAddressPairs is the maximum number of allowed address pairs
+	// configured in Neutron. When set, the value must be between 1 and 2,147,483,647
+	// inclusive. When omitted, it means there is no opinion and the platform will
+	// choose a reasonable default which is subject to change. Currently, the default
+	// value matches Neutron's default.
+	MaxAllowedAddressPairs *int32 `json:"maxAllowedAddressPairs,omitempty"`
 }
 
 // OpenStackPlatformSpecApplyConfiguration constructs a declarative configuration of the OpenStackPlatformSpec type for use with
@@ -70,5 +76,13 @@ func (b *OpenStackPlatformSpecApplyConfiguration) WithMachineNetworks(values ...
 	for i := range values {
 		b.MachineNetworks = append(b.MachineNetworks, values[i])
 	}
+	return b
+}
+
+// WithMaxAllowedAddressPairs sets the MaxAllowedAddressPairs field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the MaxAllowedAddressPairs field is set to the value of the last call.
+func (b *OpenStackPlatformSpecApplyConfiguration) WithMaxAllowedAddressPairs(value int32) *OpenStackPlatformSpecApplyConfiguration {
+	b.MaxAllowedAddressPairs = &value
 	return b
 }

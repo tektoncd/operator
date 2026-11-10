@@ -25,6 +25,7 @@ import (
 // +kubebuilder:printcolumn:name=Degraded,JSONPath=.status.conditions[?(@.type=="Degraded")].status,type=string,description=Whether the operator is degraded.
 // +kubebuilder:printcolumn:name=Since,JSONPath=.status.conditions[?(@.type=="Available")].lastTransitionTime,type=date,description=The time the operator's Available status last changed.
 // +kubebuilder:metadata:annotations=include.release.openshift.io/self-managed-high-availability=true
+// +kubebuilder:metadata:annotations=release.openshift.io/bootstrap-required=true
 type ClusterOperator struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -160,8 +161,9 @@ const (
 	// is actively rolling out new code, propagating config changes (e.g, a version change), or otherwise
 	// moving from one steady state to another. Operators should not report
 	// Progressing when they are reconciling (without action) a previously known
-	// state. Operators should not report Progressing only because DaemonSets owned by them
-	// are adjusting to a new node from cluster scaleup or a node rebooting from cluster upgrade.
+	// state. Operators should not report Progressing only because resources owned by them,
+	// such as DaemonSets and Deployments, are adjusting to a new node from cluster scaleup
+	// or a node rebooting from cluster upgrade.
 	// If the observed cluster state has changed and the component is
 	// reacting to it (updated proxy configuration for instance), Progressing should become true
 	// since it is moving from one steady state to another.

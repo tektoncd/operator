@@ -28,16 +28,45 @@ import (
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonPipelineInformer provides access to a shared informer and lister for
-// TektonPipelines.
+// TektonPipelines. Prefer using the type-safe variant (see [TypedTektonPipelineInformer]).
 type TektonPipelineInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() operatorv1alpha1.TektonPipelineLister
 }
+
+// TypedTektonPipelineInformer provides access to a shared informer and lister for
+// TektonPipelines, including the type-safe TypedInformer variant.
+// It is a superset of TektonPipelineInformer.
+type TypedTektonPipelineInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() TektonPipelineIndexInformer
+	Lister() operatorv1alpha1.TektonPipelineLister
+}
+
+// TektonPipelineIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type TektonPipelineIndexInformer cache.TypedSharedIndexInformer[*apisoperatorv1alpha1.TektonPipeline]
+
+// TektonPipelineHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for TektonPipeline.
+type TektonPipelineHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisoperatorv1alpha1.TektonPipeline]
+
+// TektonPipelineDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for TektonPipeline.
+type TektonPipelineDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisoperatorv1alpha1.TektonPipeline]
+
+// TektonPipelineFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for TektonPipeline.
+type TektonPipelineFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisoperatorv1alpha1.TektonPipeline]
+
+// TektonPipelineIndexers is a specialization of [cache.TypedIndexers] for TektonPipeline.
+type TektonPipelineIndexers = cache.TypedIndexers[*apisoperatorv1alpha1.TektonPipeline]
+
+// DeletedTektonPipeline is a specialization of [cache.DeletedObject] for TektonPipeline.
+type DeletedTektonPipeline = cache.DeletedObject[*apisoperatorv1alpha1.TektonPipeline]
 
 type tektonPipelineInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -47,55 +76,132 @@ type tektonPipelineInformer struct {
 // NewTektonPipelineInformer constructs a new informer for TektonPipeline type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonPipelineInformer]).
 func NewTektonPipelineInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredTektonPipelineInformer(client, resyncPeriod, indexers, nil)
+	return NewTektonPipelineInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedTektonPipelineInformer constructs a new informer for TektonPipeline type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonPipelineInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonPipelineIndexers) TektonPipelineIndexInformer {
+	return NewTypedTektonPipelineInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredTektonPipelineInformer constructs a new informer for TektonPipeline type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredTektonPipelineInformer]).
 func NewFilteredTektonPipelineInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
+	return NewTypedTektonPipelineInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredTektonPipelineInformer constructs a new informer for TektonPipeline type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredTektonPipelineInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonPipelineIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) TektonPipelineIndexInformer {
+	return NewTypedTektonPipelineInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
+}
+
+// NewTektonPipelineInformerWithOptions constructs a new informer for TektonPipeline type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonPipelineInformerWithOptions]).
+func NewTektonPipelineInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedTektonPipelineInformerWithOptions(client, options)
+}
+
+// NewTypedTektonPipelineInformerWithOptions constructs a new informer for TektonPipeline type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonPipelineInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) TektonPipelineIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "operator.tekton.dev", Version: "v1alpha1", Resource: "tektonpipelines"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonPipeline](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonPipelines().List(context.Background(), options)
+				return client.OperatorV1alpha1().TektonPipelines().List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonPipelines().Watch(context.Background(), options)
+				return client.OperatorV1alpha1().TektonPipelines().Watch(context.Background(), opts)
 			},
-			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonPipelines().List(ctx, options)
+				return client.OperatorV1alpha1().TektonPipelines().List(ctx, opts)
 			},
-			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonPipelines().Watch(ctx, options)
+				return client.OperatorV1alpha1().TektonPipelines().Watch(ctx, opts)
 			},
 		}, client),
 		&apisoperatorv1alpha1.TektonPipeline{},
-		resyncPeriod,
-		indexers,
-	)
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
+		},
+	))
 }
 
 func (f *tektonPipelineInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredTektonPipelineInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewTypedTektonPipelineInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *tektonPipelineInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisoperatorv1alpha1.TektonPipeline{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *tektonPipelineInformer) TypedInformer() TektonPipelineIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonPipeline](f.factory.InformerFor(&apisoperatorv1alpha1.TektonPipeline{}, f.defaultInformer))
 }
 
 func (f *tektonPipelineInformer) Lister() operatorv1alpha1.TektonPipelineLister {
 	return operatorv1alpha1.NewTektonPipelineLister(f.Informer().GetIndexer())
+}
+
+// ToTypedTektonPipelineInformer converts an untyped informer into a TypedTektonPipelineInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonPipeline. If that is not the case, calling type-safe methods of the returned
+// TypedTektonPipelineInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedTektonPipelineInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedTektonPipelineInformer(informer TektonPipelineInformer) TypedTektonPipelineInformer {
+	if informer, ok := informer.(TypedTektonPipelineInformer); ok {
+		return informer
+	}
+	return &tektonPipelineTypedInformerAdapter{informer}
+}
+
+type tektonPipelineTypedInformerAdapter struct {
+	TektonPipelineInformer
+}
+
+func (a *tektonPipelineTypedInformerAdapter) TypedInformer() TektonPipelineIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonPipeline](a.Informer())
+}
+
+// ToTektonPipelineIndexInformer converts an untyped informer into a TektonPipelineIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonPipeline. If that is not the case, calling type-safe methods of the returned
+// TektonPipelineIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a TektonPipelineIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTektonPipelineIndexInformer(informer cache.SharedIndexInformer) TektonPipelineIndexInformer {
+	if informer, ok := informer.(TektonPipelineIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonPipeline](informer)
 }

@@ -6,10 +6,32 @@ package v1alpha1
 // with apply.
 //
 // PKISpec holds the specification for PKI configuration.
+// Exactly one of certificates or certificateManagement must be set.
 type PKISpecApplyConfiguration struct {
-	// certificateManagement specifies how PKI configuration is managed for internally-generated certificates.
-	// This controls the certificate generation approach for all OpenShift components that create
-	// certificates internally, including certificate authorities, serving certificates, and client certificates.
+	// certificates specifies the cluster's certificate policy for internally-generated
+	// certificates, resolved most-specific-wins: a named certificate override, then a
+	// category override (CA, server, client), then the required defaults.
+	// This field is optional and mutually exclusive with the deprecated
+	// certificateManagement field; exactly one of the two must be set.
+	// This field names a configuration policy; it is unrelated to the X.509
+	// certificate-policies extension.
+	Certificates *PKICertificatePolicyApplyConfiguration `json:"certificates,omitempty"`
+	// keys optionally configures keys generated outside of any certificate, such as
+	// the bound service-account token signing key. Entries are named and opt-in with no
+	// inherited default. When omitted, no keys are configured by this resource.
+	// When set, at least one named key must be specified; an empty object is rejected.
+	// Unlike certificates, keys have no resolution chain: a key is either configured
+	// here or it is not, and a component whose key is not configured decides for
+	// itself (an internal default, or an error if it has none).
+	Keys *PKIKeyPolicyApplyConfiguration `json:"keys,omitempty"`
+	// certificateManagement is the former shape of certificates, a mode union
+	// (Unmanaged/Default/Custom). It is retained only so that clients written against
+	// it keep compiling and so that objects using it keep roundtripping; it is mutually
+	// exclusive with certificates and exactly one of the two must be set.
+	// Note that key validation is tighter than it was when this field was current:
+	// RSA key sizes above 4096 bits, which were previously accepted, are now rejected.
+	//
+	// Deprecated: use certificates instead.
 	CertificateManagement *PKICertificateManagementApplyConfiguration `json:"certificateManagement,omitempty"`
 }
 
@@ -17,6 +39,22 @@ type PKISpecApplyConfiguration struct {
 // apply.
 func PKISpec() *PKISpecApplyConfiguration {
 	return &PKISpecApplyConfiguration{}
+}
+
+// WithCertificates sets the Certificates field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Certificates field is set to the value of the last call.
+func (b *PKISpecApplyConfiguration) WithCertificates(value *PKICertificatePolicyApplyConfiguration) *PKISpecApplyConfiguration {
+	b.Certificates = value
+	return b
+}
+
+// WithKeys sets the Keys field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Keys field is set to the value of the last call.
+func (b *PKISpecApplyConfiguration) WithKeys(value *PKIKeyPolicyApplyConfiguration) *PKISpecApplyConfiguration {
+	b.Keys = value
+	return b
 }
 
 // WithCertificateManagement sets the CertificateManagement field in the declarative configuration to the given value

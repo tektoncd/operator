@@ -8,25 +8,42 @@ package v1alpha1
 // PKIProfile defines the certificate generation parameters that OpenShift
 // components use to create certificates. Category overrides take precedence
 // over defaults.
+//
+// Deprecated: use PKICertificatePolicy instead.
 type PKIProfileApplyConfiguration struct {
 	// defaults specifies the default certificate configuration that applies
 	// to all certificates unless overridden by a category override.
-	Defaults *DefaultCertificateConfigApplyConfiguration `json:"defaults,omitempty"`
+	// This field is required so that every certificate has a well-defined configuration.
+	//
+	// Deprecated: use PKICertificatePolicy.Defaults instead.
+	Defaults *PKIDefaultCertificateConfigApplyConfiguration `json:"defaults,omitempty"`
 	// signerCertificates optionally overrides certificate parameters for
 	// certificate authority (CA) certificates that sign other certificates.
 	// When set, these parameters take precedence over defaults for all signer certificates.
 	// When omitted, the defaults are used for signer certificates.
-	SignerCertificates *CertificateConfigApplyConfiguration `json:"signerCertificates,omitempty"`
+	// The key field within it is now marked required (previously enforced
+	// via minProperties: 1).
+	//
+	// Deprecated: use PKICertificatePolicy.CACertificates instead.
+	SignerCertificates *PKICertificateConfigApplyConfiguration `json:"signerCertificates,omitempty"`
 	// servingCertificates optionally overrides certificate parameters for
 	// TLS server certificates used to serve HTTPS endpoints.
 	// When set, these parameters take precedence over defaults for all serving certificates.
 	// When omitted, the defaults are used for serving certificates.
-	ServingCertificates *CertificateConfigApplyConfiguration `json:"servingCertificates,omitempty"`
+	// The key field within it is now marked required (previously enforced
+	// via minProperties: 1).
+	//
+	// Deprecated: use PKICertificatePolicy.ServerCertificates instead.
+	ServingCertificates *PKICertificateConfigApplyConfiguration `json:"servingCertificates,omitempty"`
 	// clientCertificates optionally overrides certificate parameters for
 	// client authentication certificates used to authenticate to servers.
 	// When set, these parameters take precedence over defaults for all client certificates.
 	// When omitted, the defaults are used for client certificates.
-	ClientCertificates *CertificateConfigApplyConfiguration `json:"clientCertificates,omitempty"`
+	// The key field within it is now marked required (previously enforced
+	// via minProperties: 1).
+	//
+	// Deprecated: use PKICertificatePolicy.ClientCertificates instead.
+	ClientCertificates *PKICertificateConfigApplyConfiguration `json:"clientCertificates,omitempty"`
 }
 
 // PKIProfileApplyConfiguration constructs a declarative configuration of the PKIProfile type for use with
@@ -38,7 +55,7 @@ func PKIProfile() *PKIProfileApplyConfiguration {
 // WithDefaults sets the Defaults field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Defaults field is set to the value of the last call.
-func (b *PKIProfileApplyConfiguration) WithDefaults(value *DefaultCertificateConfigApplyConfiguration) *PKIProfileApplyConfiguration {
+func (b *PKIProfileApplyConfiguration) WithDefaults(value *PKIDefaultCertificateConfigApplyConfiguration) *PKIProfileApplyConfiguration {
 	b.Defaults = value
 	return b
 }
@@ -46,7 +63,7 @@ func (b *PKIProfileApplyConfiguration) WithDefaults(value *DefaultCertificateCon
 // WithSignerCertificates sets the SignerCertificates field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SignerCertificates field is set to the value of the last call.
-func (b *PKIProfileApplyConfiguration) WithSignerCertificates(value *CertificateConfigApplyConfiguration) *PKIProfileApplyConfiguration {
+func (b *PKIProfileApplyConfiguration) WithSignerCertificates(value *PKICertificateConfigApplyConfiguration) *PKIProfileApplyConfiguration {
 	b.SignerCertificates = value
 	return b
 }
@@ -54,7 +71,7 @@ func (b *PKIProfileApplyConfiguration) WithSignerCertificates(value *Certificate
 // WithServingCertificates sets the ServingCertificates field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ServingCertificates field is set to the value of the last call.
-func (b *PKIProfileApplyConfiguration) WithServingCertificates(value *CertificateConfigApplyConfiguration) *PKIProfileApplyConfiguration {
+func (b *PKIProfileApplyConfiguration) WithServingCertificates(value *PKICertificateConfigApplyConfiguration) *PKIProfileApplyConfiguration {
 	b.ServingCertificates = value
 	return b
 }
@@ -62,7 +79,7 @@ func (b *PKIProfileApplyConfiguration) WithServingCertificates(value *Certificat
 // WithClientCertificates sets the ClientCertificates field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ClientCertificates field is set to the value of the last call.
-func (b *PKIProfileApplyConfiguration) WithClientCertificates(value *CertificateConfigApplyConfiguration) *PKIProfileApplyConfiguration {
+func (b *PKIProfileApplyConfiguration) WithClientCertificates(value *PKICertificateConfigApplyConfiguration) *PKIProfileApplyConfiguration {
 	b.ClientCertificates = value
 	return b
 }

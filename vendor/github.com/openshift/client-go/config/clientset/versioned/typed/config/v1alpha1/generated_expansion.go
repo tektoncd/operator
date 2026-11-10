@@ -2,11 +2,9 @@
 
 package v1alpha1
 
-type BackupExpansion interface{}
-
-type CRIOCredentialProviderConfigExpansion interface{}
-
 type ClusterMonitoringExpansion interface{}
+
+type ControllerManagerExpansion interface{}
 
 type InsightsDataGatherExpansion interface{}
 
