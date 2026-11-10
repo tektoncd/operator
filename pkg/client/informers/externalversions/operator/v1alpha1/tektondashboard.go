@@ -28,16 +28,45 @@ import (
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonDashboardInformer provides access to a shared informer and lister for
-// TektonDashboards.
+// TektonDashboards. Prefer using the type-safe variant (see [TypedTektonDashboardInformer]).
 type TektonDashboardInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() operatorv1alpha1.TektonDashboardLister
 }
+
+// TypedTektonDashboardInformer provides access to a shared informer and lister for
+// TektonDashboards, including the type-safe TypedInformer variant.
+// It is a superset of TektonDashboardInformer.
+type TypedTektonDashboardInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() TektonDashboardIndexInformer
+	Lister() operatorv1alpha1.TektonDashboardLister
+}
+
+// TektonDashboardIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type TektonDashboardIndexInformer cache.TypedSharedIndexInformer[*apisoperatorv1alpha1.TektonDashboard]
+
+// TektonDashboardHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for TektonDashboard.
+type TektonDashboardHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisoperatorv1alpha1.TektonDashboard]
+
+// TektonDashboardDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for TektonDashboard.
+type TektonDashboardDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisoperatorv1alpha1.TektonDashboard]
+
+// TektonDashboardFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for TektonDashboard.
+type TektonDashboardFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisoperatorv1alpha1.TektonDashboard]
+
+// TektonDashboardIndexers is a specialization of [cache.TypedIndexers] for TektonDashboard.
+type TektonDashboardIndexers = cache.TypedIndexers[*apisoperatorv1alpha1.TektonDashboard]
+
+// DeletedTektonDashboard is a specialization of [cache.DeletedObject] for TektonDashboard.
+type DeletedTektonDashboard = cache.DeletedObject[*apisoperatorv1alpha1.TektonDashboard]
 
 type tektonDashboardInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -47,55 +76,132 @@ type tektonDashboardInformer struct {
 // NewTektonDashboardInformer constructs a new informer for TektonDashboard type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonDashboardInformer]).
 func NewTektonDashboardInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredTektonDashboardInformer(client, resyncPeriod, indexers, nil)
+	return NewTektonDashboardInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedTektonDashboardInformer constructs a new informer for TektonDashboard type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonDashboardInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonDashboardIndexers) TektonDashboardIndexInformer {
+	return NewTypedTektonDashboardInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredTektonDashboardInformer constructs a new informer for TektonDashboard type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredTektonDashboardInformer]).
 func NewFilteredTektonDashboardInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
+	return NewTypedTektonDashboardInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredTektonDashboardInformer constructs a new informer for TektonDashboard type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredTektonDashboardInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonDashboardIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) TektonDashboardIndexInformer {
+	return NewTypedTektonDashboardInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
+}
+
+// NewTektonDashboardInformerWithOptions constructs a new informer for TektonDashboard type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonDashboardInformerWithOptions]).
+func NewTektonDashboardInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedTektonDashboardInformerWithOptions(client, options)
+}
+
+// NewTypedTektonDashboardInformerWithOptions constructs a new informer for TektonDashboard type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonDashboardInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) TektonDashboardIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "operator.tekton.dev", Version: "v1alpha1", Resource: "tektondashboards"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonDashboard](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonDashboards().List(context.Background(), options)
+				return client.OperatorV1alpha1().TektonDashboards().List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonDashboards().Watch(context.Background(), options)
+				return client.OperatorV1alpha1().TektonDashboards().Watch(context.Background(), opts)
 			},
-			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonDashboards().List(ctx, options)
+				return client.OperatorV1alpha1().TektonDashboards().List(ctx, opts)
 			},
-			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonDashboards().Watch(ctx, options)
+				return client.OperatorV1alpha1().TektonDashboards().Watch(ctx, opts)
 			},
 		}, client),
 		&apisoperatorv1alpha1.TektonDashboard{},
-		resyncPeriod,
-		indexers,
-	)
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
+		},
+	))
 }
 
 func (f *tektonDashboardInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredTektonDashboardInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewTypedTektonDashboardInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *tektonDashboardInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisoperatorv1alpha1.TektonDashboard{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *tektonDashboardInformer) TypedInformer() TektonDashboardIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonDashboard](f.factory.InformerFor(&apisoperatorv1alpha1.TektonDashboard{}, f.defaultInformer))
 }
 
 func (f *tektonDashboardInformer) Lister() operatorv1alpha1.TektonDashboardLister {
 	return operatorv1alpha1.NewTektonDashboardLister(f.Informer().GetIndexer())
+}
+
+// ToTypedTektonDashboardInformer converts an untyped informer into a TypedTektonDashboardInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonDashboard. If that is not the case, calling type-safe methods of the returned
+// TypedTektonDashboardInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedTektonDashboardInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedTektonDashboardInformer(informer TektonDashboardInformer) TypedTektonDashboardInformer {
+	if informer, ok := informer.(TypedTektonDashboardInformer); ok {
+		return informer
+	}
+	return &tektonDashboardTypedInformerAdapter{informer}
+}
+
+type tektonDashboardTypedInformerAdapter struct {
+	TektonDashboardInformer
+}
+
+func (a *tektonDashboardTypedInformerAdapter) TypedInformer() TektonDashboardIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonDashboard](a.Informer())
+}
+
+// ToTektonDashboardIndexInformer converts an untyped informer into a TektonDashboardIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonDashboard. If that is not the case, calling type-safe methods of the returned
+// TektonDashboardIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a TektonDashboardIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTektonDashboardIndexInformer(informer cache.SharedIndexInformer) TektonDashboardIndexInformer {
+	if informer, ok := informer.(TektonDashboardIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonDashboard](informer)
 }

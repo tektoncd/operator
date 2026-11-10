@@ -28,16 +28,45 @@ import (
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonTriggerInformer provides access to a shared informer and lister for
-// TektonTriggers.
+// TektonTriggers. Prefer using the type-safe variant (see [TypedTektonTriggerInformer]).
 type TektonTriggerInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() operatorv1alpha1.TektonTriggerLister
 }
+
+// TypedTektonTriggerInformer provides access to a shared informer and lister for
+// TektonTriggers, including the type-safe TypedInformer variant.
+// It is a superset of TektonTriggerInformer.
+type TypedTektonTriggerInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() TektonTriggerIndexInformer
+	Lister() operatorv1alpha1.TektonTriggerLister
+}
+
+// TektonTriggerIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type TektonTriggerIndexInformer cache.TypedSharedIndexInformer[*apisoperatorv1alpha1.TektonTrigger]
+
+// TektonTriggerHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for TektonTrigger.
+type TektonTriggerHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisoperatorv1alpha1.TektonTrigger]
+
+// TektonTriggerDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for TektonTrigger.
+type TektonTriggerDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisoperatorv1alpha1.TektonTrigger]
+
+// TektonTriggerFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for TektonTrigger.
+type TektonTriggerFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisoperatorv1alpha1.TektonTrigger]
+
+// TektonTriggerIndexers is a specialization of [cache.TypedIndexers] for TektonTrigger.
+type TektonTriggerIndexers = cache.TypedIndexers[*apisoperatorv1alpha1.TektonTrigger]
+
+// DeletedTektonTrigger is a specialization of [cache.DeletedObject] for TektonTrigger.
+type DeletedTektonTrigger = cache.DeletedObject[*apisoperatorv1alpha1.TektonTrigger]
 
 type tektonTriggerInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -47,55 +76,132 @@ type tektonTriggerInformer struct {
 // NewTektonTriggerInformer constructs a new informer for TektonTrigger type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonTriggerInformer]).
 func NewTektonTriggerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredTektonTriggerInformer(client, resyncPeriod, indexers, nil)
+	return NewTektonTriggerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedTektonTriggerInformer constructs a new informer for TektonTrigger type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonTriggerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonTriggerIndexers) TektonTriggerIndexInformer {
+	return NewTypedTektonTriggerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredTektonTriggerInformer constructs a new informer for TektonTrigger type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredTektonTriggerInformer]).
 func NewFilteredTektonTriggerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
+	return NewTypedTektonTriggerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredTektonTriggerInformer constructs a new informer for TektonTrigger type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredTektonTriggerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonTriggerIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) TektonTriggerIndexInformer {
+	return NewTypedTektonTriggerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
+}
+
+// NewTektonTriggerInformerWithOptions constructs a new informer for TektonTrigger type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonTriggerInformerWithOptions]).
+func NewTektonTriggerInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedTektonTriggerInformerWithOptions(client, options)
+}
+
+// NewTypedTektonTriggerInformerWithOptions constructs a new informer for TektonTrigger type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonTriggerInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) TektonTriggerIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "operator.tekton.dev", Version: "v1alpha1", Resource: "tektontriggers"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonTrigger](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonTriggers().List(context.Background(), options)
+				return client.OperatorV1alpha1().TektonTriggers().List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonTriggers().Watch(context.Background(), options)
+				return client.OperatorV1alpha1().TektonTriggers().Watch(context.Background(), opts)
 			},
-			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonTriggers().List(ctx, options)
+				return client.OperatorV1alpha1().TektonTriggers().List(ctx, opts)
 			},
-			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().TektonTriggers().Watch(ctx, options)
+				return client.OperatorV1alpha1().TektonTriggers().Watch(ctx, opts)
 			},
 		}, client),
 		&apisoperatorv1alpha1.TektonTrigger{},
-		resyncPeriod,
-		indexers,
-	)
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
+		},
+	))
 }
 
 func (f *tektonTriggerInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredTektonTriggerInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewTypedTektonTriggerInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *tektonTriggerInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisoperatorv1alpha1.TektonTrigger{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *tektonTriggerInformer) TypedInformer() TektonTriggerIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonTrigger](f.factory.InformerFor(&apisoperatorv1alpha1.TektonTrigger{}, f.defaultInformer))
 }
 
 func (f *tektonTriggerInformer) Lister() operatorv1alpha1.TektonTriggerLister {
 	return operatorv1alpha1.NewTektonTriggerLister(f.Informer().GetIndexer())
+}
+
+// ToTypedTektonTriggerInformer converts an untyped informer into a TypedTektonTriggerInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonTrigger. If that is not the case, calling type-safe methods of the returned
+// TypedTektonTriggerInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedTektonTriggerInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedTektonTriggerInformer(informer TektonTriggerInformer) TypedTektonTriggerInformer {
+	if informer, ok := informer.(TypedTektonTriggerInformer); ok {
+		return informer
+	}
+	return &tektonTriggerTypedInformerAdapter{informer}
+}
+
+type tektonTriggerTypedInformerAdapter struct {
+	TektonTriggerInformer
+}
+
+func (a *tektonTriggerTypedInformerAdapter) TypedInformer() TektonTriggerIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonTrigger](a.Informer())
+}
+
+// ToTektonTriggerIndexInformer converts an untyped informer into a TektonTriggerIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonTrigger. If that is not the case, calling type-safe methods of the returned
+// TektonTriggerIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a TektonTriggerIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTektonTriggerIndexInformer(informer cache.SharedIndexInformer) TektonTriggerIndexInformer {
+	if informer, ok := informer.(TektonTriggerIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonTrigger](informer)
 }

@@ -9,10 +9,12 @@ import (
 // PKICertificateManagementApplyConfiguration represents a declarative configuration of the PKICertificateManagement type for use
 // with apply.
 //
-// PKICertificateManagement determines whether components use hardcoded defaults (Unmanaged), follow
-// OpenShift best practices (Default), or use administrator-specified cryptographic parameters (Custom).
-// This provides flexibility for organizations with specific compliance requirements or security policies
-// while maintaining backwards compatibility for existing clusters.
+// PKICertificateManagement is the former container for certificate configuration,
+// a mode union determining whether components use hardcoded defaults (Unmanaged),
+// follow OpenShift best practices (Default), or use administrator-specified
+// cryptographic parameters (Custom).
+//
+// Deprecated: use PKICertificatePolicy instead.
 type PKICertificateManagementApplyConfiguration struct {
 	// mode determines how PKI configuration is managed.
 	// Valid values are "Unmanaged", "Default", and "Custom".
@@ -34,11 +36,16 @@ type PKICertificateManagementApplyConfiguration struct {
 	//
 	// When set to Custom, the certificate management parameters can be set
 	// explicitly. Use the custom field to specify certificate generation parameters.
+	//
+	// Deprecated: configure PKICertificatePolicy via the certificates field instead.
 	Mode *configv1alpha1.PKICertificateManagementMode `json:"mode,omitempty"`
 	// custom contains administrator-specified cryptographic configuration.
-	// Use the defaults and category override fields
+	// Use the defaults and category override fields of the embedded PKIProfile
 	// to specify certificate generation parameters.
 	// Required when mode is Custom, and forbidden otherwise.
+	// When omitted, mode governs behavior on its own.
+	//
+	// Deprecated: use the fields of PKICertificatePolicy instead.
 	Custom *CustomPKIPolicyApplyConfiguration `json:"custom,omitempty"`
 }
 

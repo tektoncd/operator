@@ -36,10 +36,12 @@ type AdditionalAlertmanagerConfigApplyConfiguration struct {
 	// When omitted, this means no opinion and the platform is left to choose a reasonable default, which is subject to change over time.
 	// The current default value is `HTTP`.
 	Scheme *configv1alpha1.AlertmanagerScheme `json:"scheme,omitempty"`
-	// staticConfigs is a list of statically configured Alertmanager endpoints in the form
-	// of `<host>:<port>`. Each entry must be a valid hostname, IPv4 address, or IPv6 address
-	// (in brackets) followed by a colon and a valid port number (1-65535).
-	// Examples: "alertmanager.example.com:9093", "192.168.1.100:9093", "[::1]:9093"
+	// staticConfigs is a list of statically configured Alertmanager endpoints.
+	// Each entry must be a valid hostname, IPv4 address, or IPv6 address (in brackets),
+	// optionally followed by a colon and a port number (1-65535).
+	// When the port is omitted, Prometheus uses the default port for the configured scheme
+	// (80 for HTTP, 443 for HTTPS).
+	// Examples: "alertmanager.example.com", "alertmanager.example.com:9093", "192.168.1.100:9093", "[::1]:9093"
 	// At least one endpoint must be specified (minimum 1, maximum 10 endpoints).
 	// Each entry must be unique and non-empty (empty string is invalid).
 	StaticConfigs []string `json:"staticConfigs,omitempty"`

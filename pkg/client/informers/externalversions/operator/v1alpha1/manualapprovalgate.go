@@ -28,16 +28,45 @@ import (
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
 
 // ManualApprovalGateInformer provides access to a shared informer and lister for
-// ManualApprovalGates.
+// ManualApprovalGates. Prefer using the type-safe variant (see [TypedManualApprovalGateInformer]).
 type ManualApprovalGateInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() operatorv1alpha1.ManualApprovalGateLister
 }
+
+// TypedManualApprovalGateInformer provides access to a shared informer and lister for
+// ManualApprovalGates, including the type-safe TypedInformer variant.
+// It is a superset of ManualApprovalGateInformer.
+type TypedManualApprovalGateInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() ManualApprovalGateIndexInformer
+	Lister() operatorv1alpha1.ManualApprovalGateLister
+}
+
+// ManualApprovalGateIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type ManualApprovalGateIndexInformer cache.TypedSharedIndexInformer[*apisoperatorv1alpha1.ManualApprovalGate]
+
+// ManualApprovalGateHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for ManualApprovalGate.
+type ManualApprovalGateHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisoperatorv1alpha1.ManualApprovalGate]
+
+// ManualApprovalGateDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for ManualApprovalGate.
+type ManualApprovalGateDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisoperatorv1alpha1.ManualApprovalGate]
+
+// ManualApprovalGateFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for ManualApprovalGate.
+type ManualApprovalGateFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisoperatorv1alpha1.ManualApprovalGate]
+
+// ManualApprovalGateIndexers is a specialization of [cache.TypedIndexers] for ManualApprovalGate.
+type ManualApprovalGateIndexers = cache.TypedIndexers[*apisoperatorv1alpha1.ManualApprovalGate]
+
+// DeletedManualApprovalGate is a specialization of [cache.DeletedObject] for ManualApprovalGate.
+type DeletedManualApprovalGate = cache.DeletedObject[*apisoperatorv1alpha1.ManualApprovalGate]
 
 type manualApprovalGateInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -47,55 +76,132 @@ type manualApprovalGateInformer struct {
 // NewManualApprovalGateInformer constructs a new informer for ManualApprovalGate type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedManualApprovalGateInformer]).
 func NewManualApprovalGateInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredManualApprovalGateInformer(client, resyncPeriod, indexers, nil)
+	return NewManualApprovalGateInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedManualApprovalGateInformer constructs a new informer for ManualApprovalGate type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedManualApprovalGateInformer(client versioned.Interface, resyncPeriod time.Duration, indexers ManualApprovalGateIndexers) ManualApprovalGateIndexInformer {
+	return NewTypedManualApprovalGateInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredManualApprovalGateInformer constructs a new informer for ManualApprovalGate type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredManualApprovalGateInformer]).
 func NewFilteredManualApprovalGateInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
+	return NewTypedManualApprovalGateInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredManualApprovalGateInformer constructs a new informer for ManualApprovalGate type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredManualApprovalGateInformer(client versioned.Interface, resyncPeriod time.Duration, indexers ManualApprovalGateIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) ManualApprovalGateIndexInformer {
+	return NewTypedManualApprovalGateInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
+}
+
+// NewManualApprovalGateInformerWithOptions constructs a new informer for ManualApprovalGate type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedManualApprovalGateInformerWithOptions]).
+func NewManualApprovalGateInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedManualApprovalGateInformerWithOptions(client, options)
+}
+
+// NewTypedManualApprovalGateInformerWithOptions constructs a new informer for ManualApprovalGate type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedManualApprovalGateInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) ManualApprovalGateIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "operator.tekton.dev", Version: "v1alpha1", Resource: "manualapprovalgates"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.ManualApprovalGate](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().ManualApprovalGates().List(context.Background(), options)
+				return client.OperatorV1alpha1().ManualApprovalGates().List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().ManualApprovalGates().Watch(context.Background(), options)
+				return client.OperatorV1alpha1().ManualApprovalGates().Watch(context.Background(), opts)
 			},
-			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().ManualApprovalGates().List(ctx, options)
+				return client.OperatorV1alpha1().ManualApprovalGates().List(ctx, opts)
 			},
-			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.OperatorV1alpha1().ManualApprovalGates().Watch(ctx, options)
+				return client.OperatorV1alpha1().ManualApprovalGates().Watch(ctx, opts)
 			},
 		}, client),
 		&apisoperatorv1alpha1.ManualApprovalGate{},
-		resyncPeriod,
-		indexers,
-	)
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
+		},
+	))
 }
 
 func (f *manualApprovalGateInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredManualApprovalGateInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewTypedManualApprovalGateInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *manualApprovalGateInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisoperatorv1alpha1.ManualApprovalGate{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *manualApprovalGateInformer) TypedInformer() ManualApprovalGateIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.ManualApprovalGate](f.factory.InformerFor(&apisoperatorv1alpha1.ManualApprovalGate{}, f.defaultInformer))
 }
 
 func (f *manualApprovalGateInformer) Lister() operatorv1alpha1.ManualApprovalGateLister {
 	return operatorv1alpha1.NewManualApprovalGateLister(f.Informer().GetIndexer())
+}
+
+// ToTypedManualApprovalGateInformer converts an untyped informer into a TypedManualApprovalGateInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ManualApprovalGate. If that is not the case, calling type-safe methods of the returned
+// TypedManualApprovalGateInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedManualApprovalGateInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedManualApprovalGateInformer(informer ManualApprovalGateInformer) TypedManualApprovalGateInformer {
+	if informer, ok := informer.(TypedManualApprovalGateInformer); ok {
+		return informer
+	}
+	return &manualApprovalGateTypedInformerAdapter{informer}
+}
+
+type manualApprovalGateTypedInformerAdapter struct {
+	ManualApprovalGateInformer
+}
+
+func (a *manualApprovalGateTypedInformerAdapter) TypedInformer() ManualApprovalGateIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.ManualApprovalGate](a.Informer())
+}
+
+// ToManualApprovalGateIndexInformer converts an untyped informer into a ManualApprovalGateIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ManualApprovalGate. If that is not the case, calling type-safe methods of the returned
+// ManualApprovalGateIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a ManualApprovalGateIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToManualApprovalGateIndexInformer(informer cache.SharedIndexInformer) ManualApprovalGateIndexInformer {
+	if informer, ok := informer.(ManualApprovalGateIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.ManualApprovalGate](informer)
 }
