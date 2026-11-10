@@ -22,13 +22,112 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	dynamicclient "github.com/tektoncd/operator/pkg/client/injection/dynamic"
 	"github.com/tektoncd/tekton-kueue/pkg/config"
 
 	"gotest.tools/v3/assert"
 	"knative.dev/pkg/ptr"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
 )
+
+func openShiftBuildContext(t *testing.T, shipwrightState, sharedResourceState string, found bool) context.Context {
+	t.Helper()
+	var objects []runtime.Object
+	if found {
+		build := &unstructured.Unstructured{Object: map[string]interface{}{
+			"apiVersion": "operator.openshift.io/v1alpha1",
+			"kind":       "OpenShiftBuild",
+			"metadata":   map[string]interface{}{"name": "cluster"},
+		}}
+		if shipwrightState != "" {
+			assert.NilError(t, unstructured.SetNestedField(build.Object, shipwrightState, "spec", "shipwright", "build", "state"))
+		}
+		if sharedResourceState != "" {
+			assert.NilError(t, unstructured.SetNestedField(build.Object, sharedResourceState, "spec", "sharedResource", "state"))
+		}
+		objects = append(objects, build)
+	}
+	return dynamicclient.WithClient(context.Background(), dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), objects...))
+}
+
+func Test_SetDefaults_OpenShiftBuildComponents(t *testing.T) {
+	t.Setenv("PLATFORM", "openshift")
+	for _, tc := range []struct {
+		name                string
+		shipwrightState     string
+		sharedResourceState string
+		found               bool
+		enabled             bool
+	}{
+		{name: "both standalone components enabled", shipwrightState: "Enabled", sharedResourceState: "Enabled", found: true},
+		{name: "standalone defaults enabled", found: true},
+		{name: "only standalone CSI enabled", shipwrightState: "Disabled", sharedResourceState: "Enabled", found: true},
+		{name: "only standalone Shipwright enabled", shipwrightState: "Enabled", sharedResourceState: "Disabled", found: true},
+		{name: "both standalone components disabled", shipwrightState: "Disabled", sharedResourceState: "Disabled", found: true},
+		{name: "standalone absent", enabled: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config := &TektonConfig{}
+			ctx := openShiftBuildContext(t, tc.shipwrightState, tc.sharedResourceState, tc.found)
+			config.SetDefaults(ctx)
+			assert.Equal(t, config.Spec.Platforms.OpenShift.ShipwrightBuild.Enabled, tc.enabled)
+			assert.Equal(t, config.Spec.Platforms.OpenShift.SharedResource.Enabled, tc.enabled)
+			client := dynamicclient.Get(ctx).(*dynamicfake.FakeDynamicClient)
+			assert.Equal(t, len(client.Actions()), 1, "both defaults must share one legacy CR lookup")
+		})
+	}
+}
+
+func Test_SetDefaults_OpenShiftBuildComponentsPreserveExplicitValues(t *testing.T) {
+	t.Setenv("PLATFORM", "openshift")
+	for _, tc := range []struct {
+		name       string
+		found      bool
+		configured bool
+	}{
+		{name: "explicit enable with standalone Builds", found: true, configured: true},
+		{name: "explicit disable without standalone Builds"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			platform := &OpenShift{
+				ShipwrightBuild: &ShipwrightBuildConfig{Enabled: tc.configured},
+				SharedResource:  &SharedResourceConfig{Enabled: tc.configured},
+			}
+			config := &TektonConfig{Spec: TektonConfigSpec{Platforms: Platforms{OpenShift: platform}}}
+			ctx := openShiftBuildContext(t, "Enabled", "Enabled", tc.found)
+			config.SetDefaults(ctx)
+			assert.Equal(t, platform.ShipwrightBuild.Enabled, tc.configured)
+			assert.Equal(t, platform.SharedResource.Enabled, tc.configured)
+			client := dynamicclient.Get(ctx).(*dynamicfake.FakeDynamicClient)
+			assert.Equal(t, len(client.Actions()), 0, "explicit component blocks must skip detection")
+		})
+	}
+}
+
+func Test_SetDefaults_OpenShiftBuildComponentsPreserveOneExplicitValue(t *testing.T) {
+	t.Setenv("PLATFORM", "openshift")
+	platform := &OpenShift{ShipwrightBuild: &ShipwrightBuildConfig{Enabled: true}}
+	config := &TektonConfig{Spec: TektonConfigSpec{Platforms: Platforms{OpenShift: platform}}}
+	ctx := openShiftBuildContext(t, "Disabled", "Enabled", true)
+	config.SetDefaults(ctx)
+	assert.Equal(t, platform.ShipwrightBuild.Enabled, true)
+	assert.Equal(t, platform.SharedResource.Enabled, false)
+}
+
+func Test_SetDefaults_KubernetesSkipsStandaloneBuildsDetection(t *testing.T) {
+	t.Setenv("PLATFORM", "kubernetes")
+	ctx := openShiftBuildContext(t, "Enabled", "Enabled", true)
+	config := &TektonConfig{}
+	config.SetDefaults(ctx)
+	assert.Assert(t, config.Spec.Platforms.OpenShift == nil)
+	assert.Equal(t, config.Spec.Platforms.Kubernetes.ShipwrightBuild.Enabled, false)
+	client := dynamicclient.Get(ctx).(*dynamicfake.FakeDynamicClient)
+	assert.Equal(t, len(client.Actions()), 0)
+}
 
 func Test_SetDefaults_OpenShift_MigratesKubernetesPipelinesAsCode(t *testing.T) {
 	t.Setenv("PLATFORM", "openshift")

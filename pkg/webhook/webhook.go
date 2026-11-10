@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	dynamicclient "github.com/tektoncd/operator/pkg/client/injection/dynamic"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -52,6 +53,7 @@ func SetTypes(platform string) {
 }
 
 func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	client := dynamicclient.Get(ctx)
 	return defaulting.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
@@ -62,9 +64,10 @@ func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 		// The resources to validate and default.
 		types,
 
-		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
+		// Admission requests have independent contexts. Carry the injected client
+		// into SetDefaults so cluster-aware defaults reuse the shared API client.
 		func(ctx context.Context) context.Context {
-			return ctx
+			return dynamicclient.WithClient(ctx, client)
 		},
 
 		// Whether to disallow unknown fields.
