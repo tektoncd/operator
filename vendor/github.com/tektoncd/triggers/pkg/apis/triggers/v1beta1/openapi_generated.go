@@ -152,8 +152,7 @@ func schema_pkg_apis_triggers_v1beta1_ClusterTriggerBindingList(ref common.Refer
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.ClusterTriggerBinding"),
+										Ref: ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.ClusterTriggerBinding"),
 									},
 								},
 							},
@@ -281,8 +280,7 @@ func schema_pkg_apis_triggers_v1beta1_EventListenerList(ref common.ReferenceCall
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.EventListener"),
+										Ref: ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.EventListener"),
 									},
 								},
 							},
@@ -321,8 +319,7 @@ func schema_pkg_apis_triggers_v1beta1_EventListenerSpec(ref common.ReferenceCall
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.EventListenerTrigger"),
+										Ref: ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.EventListenerTrigger"),
 									},
 								},
 							},
@@ -340,8 +337,7 @@ func schema_pkg_apis_triggers_v1beta1_EventListenerSpec(ref common.ReferenceCall
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.EventListenerTriggerGroup"),
+										Ref: ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.EventListenerTriggerGroup"),
 									},
 								},
 							},
@@ -405,8 +401,7 @@ func schema_pkg_apis_triggers_v1beta1_EventListenerStatus(ref common.ReferenceCa
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("knative.dev/pkg/apis.Condition"),
+										Ref: ref("knative.dev/pkg/apis.Condition"),
 									},
 								},
 							},
@@ -420,9 +415,8 @@ func schema_pkg_apis_triggers_v1beta1_EventListenerStatus(ref common.ReferenceCa
 								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -441,8 +435,7 @@ func schema_pkg_apis_triggers_v1beta1_EventListenerStatus(ref common.ReferenceCa
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("knative.dev/pkg/apis/duck/v1beta1.Addressable"),
+										Ref: ref("knative.dev/pkg/apis/duck/v1beta1.Addressable"),
 									},
 								},
 							},
@@ -697,9 +690,8 @@ func schema_pkg_apis_triggers_v1beta1_InterceptorRequest(ref common.ReferenceCal
 										Items: &spec.SchemaOrArray{
 											Schema: &spec.Schema{
 												SchemaProps: spec.SchemaProps{
-													Default: "",
-													Type:    []string{"string"},
-													Format:  "",
+													Type:   []string{"string"},
+													Format: "",
 												},
 											},
 										},
@@ -862,9 +854,8 @@ func schema_pkg_apis_triggers_v1beta1_NamespaceSelector(ref common.ReferenceCall
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
@@ -1159,8 +1150,7 @@ func schema_pkg_apis_triggers_v1beta1_TriggerBindingList(ref common.ReferenceCal
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.TriggerBinding"),
+										Ref: ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.TriggerBinding"),
 									},
 								},
 							},
@@ -1194,8 +1184,7 @@ func schema_pkg_apis_triggers_v1beta1_TriggerBindingSpec(ref common.ReferenceCal
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.Param"),
+										Ref: ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.Param"),
 									},
 								},
 							},
@@ -1286,8 +1275,7 @@ func schema_pkg_apis_triggers_v1beta1_TriggerInterceptor(ref common.ReferenceCal
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.InterceptorParams"),
+										Ref: ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.InterceptorParams"),
 									},
 								},
 							},
@@ -1341,8 +1329,7 @@ func schema_pkg_apis_triggers_v1beta1_TriggerList(ref common.ReferenceCallback) 
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.Trigger"),
+										Ref: ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.Trigger"),
 									},
 								},
 							},
@@ -1598,8 +1585,7 @@ func schema_pkg_apis_triggers_v1beta1_TriggerTemplateList(ref common.ReferenceCa
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.TriggerTemplate"),
+										Ref: ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.TriggerTemplate"),
 									},
 								},
 							},
@@ -1632,8 +1618,7 @@ func schema_pkg_apis_triggers_v1beta1_TriggerTemplateSpec(ref common.ReferenceCa
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.ParamSpec"),
+										Ref: ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.ParamSpec"),
 									},
 								},
 							},
@@ -1705,8 +1690,7 @@ func schema_pkg_apis_triggers_v1beta1_WebhookInterceptor(ref common.ReferenceCal
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param"),
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param"),
 									},
 								},
 							},
