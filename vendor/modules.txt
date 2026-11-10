@@ -1568,7 +1568,7 @@ github.com/tektoncd/pruner/pkg/metrics
 ## explicit; go 1.26.4
 github.com/tektoncd/tekton-kueue/pkg/common
 github.com/tektoncd/tekton-kueue/pkg/config
-# github.com/tektoncd/triggers v0.37.2
+# github.com/tektoncd/triggers v0.37.3
 ## explicit; go 1.26.10
 github.com/tektoncd/triggers/pkg/apis/config
 github.com/tektoncd/triggers/pkg/apis/triggers

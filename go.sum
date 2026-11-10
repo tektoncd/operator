@@ -1176,8 +1176,8 @@ github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2 h1:v4UPEbe6MEto5
 github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2/go.mod h1:BC6F3DlZc+wpUT9YcwG9MoSfb4tUiH2olB9xYoIsB4I=
 github.com/tektoncd/pruner v0.4.4 h1:KC8enQbnAz6/E/Z6fnpJCnkCXXGTjnyCldrWuAb3d9Q=
 github.com/tektoncd/pruner v0.4.4/go.mod h1:LGoDotkiiYit3B1lH+Xu/ihBHYJQ1zg5qrcNa+MVLv8=
-github.com/tektoncd/triggers v0.37.2 h1:CquVgb+OAXOmnjhj3ptKUHTFI6mb4aOaCVgBDdCZme4=
-github.com/tektoncd/triggers v0.37.2/go.mod h1:DkW6oy/eILQAF+gO9OO3qOL16ZYyVzD+0yQmNc4CURY=
+github.com/tektoncd/triggers v0.37.3 h1:BCS0l1MyQfuLtMlPI9FGFZsDqm8m/HGvKVk8VInRz5Q=
+github.com/tektoncd/triggers v0.37.3/go.mod h1:9TzIVUJYHEnh1uiXaCB4CKyGwUwNeVB+QNVrOnOZ+uw=
 github.com/tetratelabs/wazero v1.12.0 h1:DuWcpNu/FzgEXgGBDp8J1Spc+CWOvvtvVyjKlaZopYU=
 github.com/tetratelabs/wazero v1.12.0/go.mod h1:LvKtzl2RqO4gyF27BiXU+nKAjcV8f38U+kP/q2vgxh0=
 github.com/thales-e-security/pool v0.0.2 h1:RAPs4q2EbWsTit6tpzuvTFlgFRJ3S8Evf5gtvVDbmPg=
