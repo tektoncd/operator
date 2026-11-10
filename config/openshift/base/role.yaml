@@ -18,6 +18,14 @@ metadata:
   name: tekton-operator
 rules:
 - apiGroups:
+  - operator.openshift.io
+  resources:
+  - openshiftbuilds
+  resourceNames:
+  - cluster
+  verbs:
+  - get
+- apiGroups:
   - ""
   resources:
   - nodes
