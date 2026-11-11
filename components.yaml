@@ -18,26 +18,22 @@ pipeline:
   version: v1.18.0
 pipelines-as-code:
   github: tektoncd/pipelines-as-code
-  version: v0.52.0
+  version: v0.53.0
 pruner:
   github: tektoncd/pruner
   version: v0.4.4
 results:
   github: tektoncd/results
   version: v0.20.0
+shared-resource:
+  github: openshift/csi-driver-shared-resource
+  version: v0.4.9
+shipwright-build:
+  github: shipwright-io/build
+  version: v0.21.11
 syncer-service:
   github: openshift-pipelines/syncer-service
   version: v0.1.1
 triggers:
   github: tektoncd/triggers
   version: v0.38.0
-shipwright-build:
-  github: shipwright-io/build
-  version: v0.21.10
-  openshift:
-    - github: redhat-openshift-builds/strategies
-      version: v0.21.0
-      files: [strategies.yaml]
-shared-resource:
-  github: openshift/csi-driver-shared-resource
-  version: v0.4.9
