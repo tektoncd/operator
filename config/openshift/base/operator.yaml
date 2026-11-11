@@ -43,6 +43,8 @@ spec:
         - "tekton-operator-lifecycle"
         imagePullPolicy: Always
         securityContext:
+          runAsNonRoot: true
+          privileged: false
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           capabilities:
@@ -112,6 +114,8 @@ spec:
         - "tekton-operator-cluster-operations"
         imagePullPolicy: Always
         securityContext:
+          runAsNonRoot: true
+          privileged: false
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           capabilities:
