@@ -133,6 +133,8 @@ spec:
             - name: https-webhook
               containerPort: 8443
           securityContext:
+            runAsNonRoot: true
+            privileged: false
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
