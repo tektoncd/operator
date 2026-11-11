@@ -24,6 +24,8 @@ spec:
       app: openshift-pipelines-operator
   template:
     metadata:
+      annotations:
+        openshift.io/required-scc: restricted-v2
       labels:
         name: openshift-pipelines-operator
         app: openshift-pipelines-operator

@@ -102,6 +102,8 @@ spec:
       name: tekton-operator-proxy-webhook
   template:
     metadata:
+      annotations:
+        openshift.io/required-scc: restricted-v2
       labels:
         name: tekton-operator-proxy-webhook
         app: tekton-operator

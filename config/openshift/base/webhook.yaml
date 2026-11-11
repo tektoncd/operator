@@ -26,6 +26,8 @@ spec:
       name: tekton-operator-webhook
   template:
     metadata:
+      annotations:
+        openshift.io/required-scc: restricted-v2
       labels:
         name: tekton-operator-webhook
         app: tekton-operator
