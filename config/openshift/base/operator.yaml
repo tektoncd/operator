@@ -50,6 +50,13 @@ spec:
             - "ALL"
           seccompProfile:
             type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
         env:
         - name: KUBERNETES_MIN_VERSION
           value: "v1.0.0"
@@ -119,6 +126,13 @@ spec:
             - "ALL"
           seccompProfile:
             type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
         env:
           - name: KUBERNETES_MIN_VERSION
             value: "v1.0.0"

@@ -80,7 +80,14 @@ operator:
   logLevel: info
   # Resource requests and limits for the operator pod
   # see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-  resources: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
   deployment:
     # Custom labels for the Deployment resource.
     customLabels: ""
@@ -124,7 +131,14 @@ webhook:
   logLevel: info
   # Resource requests and limits for the operator pod
   # see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-  resources: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 100Mi
+    limits:
+      cpu: 500m
+      memory: 500Mi
+
 
 webhookProxy:
   image:
