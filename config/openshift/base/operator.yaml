@@ -32,6 +32,7 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      enableServiceLinks: false
       serviceAccountName: openshift-pipelines-operator
       containers:
       - name: openshift-pipelines-operator-lifecycle  # all reconcilers except tektoninstallerset reconciler
@@ -41,7 +42,10 @@ spec:
         - "tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonaddon,tektonresult,openshiftpipelinesascode,manualapprovalgate,tektonpruner,tektonkueue,tektonmulticlusterproxyaae,syncerservice,namespacesync,shipwrightbuild,sharedresource"
         - "-unique-process-name"
         - "tekton-operator-lifecycle"
-        imagePullPolicy: Always
+        ports:
+        - name: http-metrics
+          containerPort: 9090
+        imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -110,7 +114,7 @@ spec:
         - "tektoninstallerset"
         - "-unique-process-name"
         - "tekton-operator-cluster-operations"
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
