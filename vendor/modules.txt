@@ -1,4 +1,4 @@
-# cel.dev/cel-go v0.32.0
+# cel.dev/cel-go v0.33.2
 ## explicit; go 1.23.0
 cel.dev/cel-go/cel
 cel.dev/cel-go/cel/async
@@ -673,8 +673,8 @@ github.com/gobuffalo/envy
 # github.com/gobuffalo/flect v1.0.3
 ## explicit; go 1.16
 github.com/gobuffalo/flect
-# github.com/gobwas/glob v1.0.0
-## explicit; go 1.22.0
+# github.com/gobwas/glob v1.1.0
+## explicit; go 1.24.0
 github.com/gobwas/glob
 github.com/gobwas/glob/internal/debug
 github.com/gobwas/glob/syntax
@@ -812,9 +812,6 @@ github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/go-retryablehttp v0.7.8
 ## explicit; go 1.23
 github.com/hashicorp/go-retryablehttp
-# github.com/hashicorp/go-uuid v1.0.3
-## explicit
-github.com/hashicorp/go-uuid
 # github.com/hashicorp/golang-lru v1.0.2
 ## explicit; go 1.12
 github.com/hashicorp/golang-lru
@@ -937,7 +934,7 @@ github.com/manifestival/manifestival/internal/sources
 # github.com/markbates/inflect v1.0.4
 ## explicit
 github.com/markbates/inflect
-# github.com/mattn/go-colorable v0.1.15
+# github.com/mattn/go-colorable v0.1.16
 ## explicit; go 1.18
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.24
@@ -1069,8 +1066,8 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-pipelines/pipelines-as-code v0.52.0
-## explicit; go 1.27.1
+# github.com/openshift-pipelines/pipelines-as-code v0.54.0
+## explicit; go 1.27.3
 github.com/openshift-pipelines/pipelines-as-code/pkg/cli
 github.com/openshift-pipelines/pipelines-as-code/pkg/configutil
 github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings
@@ -1210,8 +1207,8 @@ github.com/openshift/library-go/pkg/operator/resource/resourceread
 github.com/openshift/library-go/pkg/operator/resourcesynccontroller
 github.com/openshift/library-go/pkg/operator/v1helpers
 github.com/openshift/library-go/pkg/pki
-# github.com/pandatix/go-abnf v0.5.1
-## explicit; go 1.24.4
+# github.com/pandatix/go-abnf v0.5.3
+## explicit; go 1.26.0
 github.com/pandatix/go-abnf
 # github.com/pborman/uuid v1.2.1
 ## explicit
@@ -1244,7 +1241,7 @@ github.com/prometheus/client_golang/prometheus/promhttp/internal
 # github.com/prometheus/client_model v0.6.3
 ## explicit; go 1.23
 github.com/prometheus/client_model/go
-# github.com/prometheus/common v0.73.0
+# github.com/prometheus/common v0.73.1
 ## explicit; go 1.26.0
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/model
@@ -1854,7 +1851,7 @@ golang.org/x/mod/module
 golang.org/x/mod/semver
 golang.org/x/mod/sumdb/dirhash
 golang.org/x/mod/sumdb/note
-# golang.org/x/net v0.61.0
+# golang.org/x/net v0.62.0
 ## explicit; go 1.26.0
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2

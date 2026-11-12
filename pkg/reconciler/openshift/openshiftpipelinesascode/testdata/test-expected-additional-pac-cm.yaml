@@ -151,7 +151,18 @@ data:
   custom-console-url: ""
   custom-console-url-namespace: ""
   custom-console-url-pr-details: ""
+  custom-console-url-pr-steplog: ""
   custom-console-url-pr-tasklog: ""
+
+  # Adds the breakdown of the steps of every task to the status reported back to the Git provider
+  status-show-steps: "true"
+
+  # Enables or disables the feature to support edited comments events
+  support-edited-comments: "false"
+
+  # Enables the PipelineRun follow-ups, the on-pipelinerun annotation chaining PipelineRuns
+  # after their dependencies. Tech preview: disabled by default
+  enable-follow-up-runs: "false"
 
   # Tracing label names used for distributed tracing of webhook handling and PipelineRun timing.
   tracing-label-action: ""
