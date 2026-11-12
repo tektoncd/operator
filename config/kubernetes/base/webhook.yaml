@@ -30,6 +30,7 @@ spec:
         name: tekton-operator-webhook
         app: tekton-operator
     spec:
+      enableServiceLinks: false
       serviceAccountName: tekton-operator
       containers:
       - name: tekton-operator-webhook
