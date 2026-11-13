@@ -145,7 +145,10 @@ release_yaml_github() {
   version=$(yq .$component.version ${CONFIG})
   releaseFileName=release-$version.yaml
   destFileName=$releaseFileName
-
+  if [[ ${component} == "kueue" ]]; then
+    releaseFileName=release.yaml
+    destFileName=release.yaml
+  fi
   echo "$github_component version is $version"
   case $version in
     latest)
