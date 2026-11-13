@@ -18,6 +18,7 @@ package tektondashboard
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -27,7 +28,16 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
+
+// toRawExtension converts any object to runtime.RawExtension for testing
+func toRawExtension(t *testing.T, obj interface{}) runtime.RawExtension {
+	t.Helper()
+	data, err := json.Marshal(obj)
+	require.NoError(t, err)
+	return runtime.RawExtension{Raw: data}
+}
 
 func TestTransformer(t *testing.T) {
 	ctx := context.TODO()
@@ -43,8 +53,8 @@ func TestTransformer(t *testing.T) {
 					ExternalLogs: "/test",
 				},
 				Options: v1alpha1.AdditionalOptions{
-					Deployments: map[string]appsv1.Deployment{
-						"tekton-dashboard": {
+					Deployments: map[string]runtime.RawExtension{
+						"tekton-dashboard": toRawExtension(t, appsv1.Deployment{
 							Spec: appsv1.DeploymentSpec{
 								Template: corev1.PodTemplateSpec{
 									Spec: corev1.PodSpec{
@@ -62,7 +72,7 @@ func TestTransformer(t *testing.T) {
 									},
 								},
 							},
-						},
+						}),
 					},
 				},
 			},
