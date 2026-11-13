@@ -24,7 +24,7 @@ results:
   version: v0.20.0
 scheduler:
   github: konflux-ci/tekton-kueue
-  version: v0.4.0
+  version: v0.4.1
 syncer-service:
   github: openshift-pipelines/syncer-service
   version: v0.1.1
