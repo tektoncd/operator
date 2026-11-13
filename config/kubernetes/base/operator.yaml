@@ -80,6 +80,13 @@ spec:
             - "ALL"
           seccompProfile:
             type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
       - name: tekton-operator-cluster-operations  # tektoninstallerset reconciler
         image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
         args:
@@ -117,3 +124,10 @@ spec:
             - "ALL"
           seccompProfile:
             type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
