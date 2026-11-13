@@ -24,7 +24,7 @@ spec:
   - name: http-metrics
     port: 9090
     protocol: TCP
-    targetPort: 9090
+    targetPort: http-metrics
   selector:
     name: openshift-pipelines-operator
     app: openshift-pipelines-operator
