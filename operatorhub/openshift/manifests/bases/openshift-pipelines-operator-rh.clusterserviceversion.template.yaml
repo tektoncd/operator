@@ -402,10 +402,10 @@ spec:
     - Tekton Triggers: v0.38.0
     - Pipelines as Code: v0.54.0
     - Tekton Chains: v0.30.0
-    - Tekton Results (tech-preview): v0.20.0
+    - Tekton Results (tech-preview): v0.21.0
     - Manual Approval Gate (tech-preview): v0.9.3
     - Tekton Pruner: v0.4.4
-    - Tekton Kueue (tech-preview): v0.4.0
+    - Tekton Kueue (tech-preview): v0.4.1
     - Multicluster Proxy AAE (tech-preview): v0.1.1
 
     ## Getting Started
