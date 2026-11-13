@@ -6,7 +6,7 @@ dashboard:
   version: v0.74.0
 kueue:
   github: tektoncd/tekton-kueue
-  version: v0.4.0
+  version: v0.4.1
 manual-approval-gate:
   github: openshift-pipelines/manual-approval-gate
   version: v0.9.3
@@ -21,13 +21,13 @@ pipelines-as-code:
   version: v0.54.0
 pipelines-multikueue-plugin:
   github: openshift-pipelines/pipelines-multikueue-plugin
-  version: v0.1.0
+  version: v0.1.1
 pruner:
   github: tektoncd/pruner
   version: v0.4.4
 results:
   github: tektoncd/results
-  version: v0.20.0
+  version: v0.21.0
 shared-resource:
   github: openshift/csi-driver-shared-resource
   version: v0.4.9
