@@ -21,9 +21,33 @@ import (
 	"reflect"
 	"strings"
 
+	dynamicclient "github.com/tektoncd/operator/pkg/client/injection/dynamic"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
 )
+
+// isBuildsOperatorInstalled detects standalone Builds using OpenShiftBuild/cluster.
+// Detection is best-effort so an unavailable legacy API does not prevent
+// TektonConfig admission.
+func isBuildsOperatorInstalled(ctx context.Context) bool {
+	client := dynamicclient.Get(ctx)
+	if client == nil {
+		return false
+	}
+	gvr := schema.GroupVersionResource{Group: "operator.openshift.io", Version: "v1alpha1", Resource: "openshiftbuilds"}
+	_, err := client.Resource(gvr).Get(ctx, "cluster", metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return false
+	}
+	if err != nil {
+		logging.FromContext(ctx).Warnw("Unable to detect standalone Builds configuration", "error", err)
+		return false
+	}
+	return true
+}
 
 // MigrateScheduler copies the deprecated scheduler configuration to kueue.
 // An explicitly configured kueue field takes precedence.
@@ -219,15 +243,18 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 			ns.CreateSCCRoleBinding = ptr.Bool(true)
 		}
 
-		// ShipwrightBuild is enabled by default on OpenShift. Only default when the
-		// block is absent so an explicit user block (incl. enabled: false) is kept.
+		// Leave both Builds components to the standalone operator when its CR
+		// exists, regardless of its component states. Explicit user settings win.
+		buildsComponentsEnabled := true
+		if tc.Spec.Platforms.OpenShift.ShipwrightBuild == nil || tc.Spec.Platforms.OpenShift.SharedResource == nil {
+			buildsComponentsEnabled = !isBuildsOperatorInstalled(ctx)
+		}
 		if tc.Spec.Platforms.OpenShift.ShipwrightBuild == nil {
-			tc.Spec.Platforms.OpenShift.ShipwrightBuild = &ShipwrightBuildConfig{Enabled: true}
+			tc.Spec.Platforms.OpenShift.ShipwrightBuild = &ShipwrightBuildConfig{Enabled: buildsComponentsEnabled}
 		}
 
-		// SharedResource is OpenShift-only and enabled by default.
 		if tc.Spec.Platforms.OpenShift.SharedResource == nil {
-			tc.Spec.Platforms.OpenShift.SharedResource = &SharedResourceConfig{Enabled: true}
+			tc.Spec.Platforms.OpenShift.SharedResource = &SharedResourceConfig{Enabled: buildsComponentsEnabled}
 		}
 
 		setAddonDefaults(&tc.Spec.Addon)
