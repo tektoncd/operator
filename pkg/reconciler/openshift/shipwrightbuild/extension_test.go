@@ -18,26 +18,33 @@ package shipwrightbuild
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	fakeoperatorclient "github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/shipwrightbuild"
 	installersetclient "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	openshiftcommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	dynfake "k8s.io/client-go/dynamic/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+	clienttesting "k8s.io/client-go/testing"
 )
 
 // baseTransformerCount is the number of transformers the extension always applies
-// (RemoveRunAsUser, RemoveRunAsGroup, AddServiceCABundle, AddServiceCertificate),
+// (RemoveRunAsUser, RemoveRunAsGroup, AddServiceCABundle, AddServiceCertificate,
+// buildahSeccompProfile, WebhookReadiness),
 // independent of TLS policy or metrics-mTLS readiness.
-const baseTransformerCount = 4
+const baseTransformerCount = 6
 
 func webhookDeployment(t *testing.T) unstructured.Unstructured {
 	t.Helper()
@@ -221,6 +228,8 @@ func TestOpenShiftExtensionPreReconcile(t *testing.T) {
 	ctx := context.Background()
 	disabled := false
 	oe := &openshiftExtension{
+		kubernetesClient: kubefake.NewSimpleClientset(),
+		dynClient:        dynfake.NewSimpleDynamicClient(runtime.NewScheme()),
 		metricsMTLSReady: true, // must be forced back to false by PreReconcile
 		tektonConfigLister: fakeTektonConfigLister{tc: &v1alpha1.TektonConfig{
 			ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ConfigResourceName},
@@ -319,10 +328,7 @@ func TestOpenShiftExtensionPostReconcileNetworkPolicyDisabled(t *testing.T) {
 
 	fakeClient := fakeoperatorclient.NewSimpleClientset(npSet, mainSet)
 	tisClient := fakeClient.OperatorV1alpha1().TektonInstallerSets()
-	oe := &openshiftExtension{
-		installerSetClient: installersetclient.NewInstallerSetClient(
-			tisClient, "test-version", shipwrightbuild.OperandName, v1alpha1.KindShipwrightBuild, nil),
-	}
+	oe := postReconcileExtension(fakeClient)
 
 	sb := &v1alpha1.ShipwrightBuild{
 		Spec: v1alpha1.ShipwrightBuildSpec{
@@ -336,6 +342,160 @@ func TestOpenShiftExtensionPostReconcileNetworkPolicyDisabled(t *testing.T) {
 	util.AssertEqual(t, err, nil)
 	util.AssertEqual(t, len(list.Items), 1)
 	util.AssertEqual(t, list.Items[0].GetName(), mainSet.GetName())
+}
+
+func TestOpenShiftPostReconcile_DisabledPoliciesStillMigrate(t *testing.T) {
+	ctx := context.Background()
+	sb := newSB(nil)
+	sb.Spec.NetworkPolicy.Disabled = true
+	policySet := &v1alpha1.TektonInstallerSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "shipwrightbuild-networkpolicy-test",
+			Labels: map[string]string{
+				v1alpha1.CreatedByKey:     v1alpha1.KindShipwrightBuild,
+				v1alpha1.InstallerSetType: installersetclient.InstallerTypeCustom + "-" + NetworkPolicySet,
+			},
+		},
+	}
+	operatorClient := fakeoperatorclient.NewSimpleClientset(sb, policySet)
+	oe := postReconcileExtension(operatorClient)
+	oe.dynClient = newDynClient(openshiftBuildCR())
+
+	assert.NilError(t, oe.PostReconcile(ctx, sb))
+	sets, err := operatorClient.OperatorV1alpha1().TektonInstallerSets().List(ctx, metav1.ListOptions{})
+	assert.NilError(t, err)
+	assert.Equal(t, len(sets.Items), 0)
+	current, err := operatorClient.OperatorV1alpha1().ShipwrightBuilds().Get(ctx, sb.Name, metav1.GetOptions{})
+	assert.NilError(t, err)
+	assert.Equal(t, current.Annotations[migrationAnnotation], migrationDone)
+}
+
+func TestOpenShiftPostReconcile_WaitsForPoliciesBeforeMigration(t *testing.T) {
+	ctx := context.Background()
+	sb := newSB(nil)
+	sb.Spec.TargetNamespace = "openshift-pipelines"
+	operatorClient := fakeoperatorclient.NewSimpleClientset(sb)
+	oe := postReconcileExtension(operatorClient)
+	oe.dynClient = newDynClient(openshiftBuildCR())
+	dynClient := oe.dynClient.(*dynfake.FakeDynamicClient)
+
+	assert.Equal(t, oe.PostReconcile(ctx, sb), v1alpha1.REQUEUE_EVENT_AFTER)
+	assert.Equal(t, len(dynClient.Actions()), 0)
+	sets, err := operatorClient.OperatorV1alpha1().TektonInstallerSets().List(ctx, metav1.ListOptions{})
+	assert.NilError(t, err)
+	assert.Equal(t, len(sets.Items), 1)
+	set := &sets.Items[0]
+	assert.Equal(t, len(set.Spec.Manifests), 3)
+	for _, policy := range set.Spec.Manifests {
+		assert.Equal(t, policy.GetKind(), "NetworkPolicy")
+		assert.Equal(t, policy.GetNamespace(), sb.Spec.TargetNamespace)
+	}
+	set.Status.MarkCRDsInstalled()
+	set.Status.MarkNamespaceScopedResourcesInstalled()
+	set.Status.MarkClustersScopedResourcesInstalled()
+	set.Status.MarkDeploymentsAvailable()
+	set.Status.MarkStatefulSetReady()
+	set.Status.MarkDaemonSetReady()
+	set.Status.MarkControllerReady()
+	set.Status.MarkWebhookReady()
+	set.Status.MarkAllDeploymentsReady()
+	set.Status.MarkReady()
+	set.Status.MarkJobsInstalled()
+	_, err = operatorClient.OperatorV1alpha1().TektonInstallerSets().UpdateStatus(ctx, set, metav1.UpdateOptions{})
+	assert.NilError(t, err)
+
+	assert.NilError(t, oe.PostReconcile(ctx, sb))
+	current, err := operatorClient.OperatorV1alpha1().ShipwrightBuilds().Get(ctx, sb.Name, metav1.GetOptions{})
+	assert.NilError(t, err)
+	assert.Equal(t, current.Annotations[migrationAnnotation], migrationDone)
+}
+
+func TestOpenShiftPostReconcile_PropagatesErrors(t *testing.T) {
+	for _, stage := range []string{"networkpolicy", "migration"} {
+		t.Run(stage, func(t *testing.T) {
+			sb := newSB(nil)
+			sb.Spec.NetworkPolicy.Disabled = true
+			operatorClient := fakeoperatorclient.NewSimpleClientset(sb)
+			oe := postReconcileExtension(operatorClient)
+			dynClient := oe.dynClient.(*dynfake.FakeDynamicClient)
+			wantErr := errors.New("API unavailable")
+			reactor := func(clienttesting.Action) (bool, runtime.Object, error) {
+				return true, nil, wantErr
+			}
+			if stage == "networkpolicy" {
+				operatorClient.PrependReactor("list", "tektoninstallersets", reactor)
+			} else {
+				dynClient.PrependReactor("get", "openshiftbuilds", reactor)
+			}
+
+			assert.Equal(t, oe.PostReconcile(context.Background(), sb), wantErr)
+			if stage == "networkpolicy" {
+				assert.Equal(t, len(dynClient.Actions()), 0)
+			}
+			for _, action := range operatorClient.Actions() {
+				if action.Matches("patch", "shipwrightbuilds") {
+					t.Fatal("migration marked complete after a failed reconcile")
+				}
+			}
+		})
+	}
+}
+
+func TestOpenShiftPostReconcile_CompletedMigrationStillReconcilesPolicies(t *testing.T) {
+	for _, disabled := range []bool{false, true} {
+		name := "enabled"
+		if disabled {
+			name = "disabled"
+		}
+		t.Run(name, func(t *testing.T) {
+			sb := newSB(map[string]string{migrationAnnotation: migrationDone})
+			sb.Spec.NetworkPolicy.Disabled = disabled
+			operatorClient := fakeoperatorclient.NewSimpleClientset(sb)
+			oe := postReconcileExtension(operatorClient)
+
+			err := oe.PostReconcile(context.Background(), sb)
+			if disabled {
+				assert.NilError(t, err)
+			} else {
+				assert.Equal(t, err, v1alpha1.REQUEUE_EVENT_AFTER)
+			}
+			assert.Assert(t, len(operatorClient.Actions()) > 0)
+			// Completion never bypasses shutdown verification, but must not
+			// cause legacy mutations on a fresh installation.
+			for _, action := range oe.dynClient.(*dynfake.FakeDynamicClient).Actions() {
+				assert.Equal(t, action.GetVerb(), "get")
+			}
+			for _, action := range oe.kubernetesClient.(*kubefake.Clientset).Actions() {
+				assert.Equal(t, action.GetVerb(), "get")
+			}
+		})
+	}
+}
+
+func postReconcileExtension(operatorClient *fakeoperatorclient.Clientset) *openshiftExtension {
+	ready := func(namespace string) *appsv1.Deployment {
+		return &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: shipwrightbuild.WebhookDeploymentName, Namespace: namespace},
+			Status:     appsv1.DeploymentStatus{UpdatedReplicas: 1, ReadyReplicas: 1, AvailableReplicas: 1},
+		}
+	}
+	return &openshiftExtension{
+		installerSetClient: installersetclient.NewInstallerSetClient(operatorClient.OperatorV1alpha1().TektonInstallerSets(), "test-version", shipwrightbuild.OperandName, v1alpha1.KindShipwrightBuild, nil),
+		kubernetesClient:   kubefake.NewSimpleClientset(ready(""), ready("openshift-pipelines")),
+		operatorClient:     operatorClient,
+		dynClient:          dynfake.NewSimpleDynamicClient(runtime.NewScheme()),
+		platformParams:     networkpolicy.OpenShiftPlatformDefaults(),
+	}
+}
+
+func TestOpenShiftPreReconcile_WaitsForLegacyManagerBeforeOtherWork(t *testing.T) {
+	oe := &openshiftExtension{
+		kubernetesClient: kubefake.NewSimpleClientset(legacyOperatorDeploymentObj()),
+		dynClient:        newDynClient(openshiftBuildCR()),
+	}
+	// The other clients/listers are intentionally unset: legacy shutdown must
+	// happen first, before TLS lookups or any new installation work.
+	assert.Equal(t, oe.PreReconcile(context.Background(), newSB(nil)), v1alpha1.REQUEUE_EVENT_AFTER)
 }
 
 func containsSequence(args []string, first, second string) bool {

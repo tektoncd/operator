@@ -3,7 +3,7 @@ chains:
   version: v0.30.0
 dashboard:
   github: tektoncd/dashboard
-  version: v0.74.0
+  version: v0.73.0
 kueue:
   github: tektoncd/tekton-kueue
   version: v0.4.1
@@ -15,7 +15,7 @@ multicluster-proxy-aae:
   version: v0.1.1
 pipeline:
   github: tektoncd/pipeline
-  version: v1.18.0
+  version: v1.17.1
 pipelines-as-code:
   github: tektoncd/pipelines-as-code
   version: v0.54.0

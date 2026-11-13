@@ -28,9 +28,12 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	tektoninstallersetclient "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	openshiftcommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift/common/legacybuilds"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
 
@@ -45,6 +48,7 @@ type openshiftExtension struct {
 	platformParams     networkpolicy.PlatformParams
 	resolvedTLSConfig  *openshiftcommon.TLSEnvVars
 	tektonConfigLister openshiftcommon.TektonConfigLister
+	dynClient          dynamic.Interface
 }
 
 // NewOpenShiftExtension builds the OpenShift extension for the Shared Resource component
@@ -65,6 +69,7 @@ func NewOpenShiftExtension(ctx context.Context) common.Extension {
 		operatorClientset:  operatorclient.Get(ctx),
 		platformParams:     networkpolicy.OpenShiftPlatformDefaults(),
 		tektonConfigLister: tektonconfiginformer.Get(ctx).Lister(),
+		dynClient:          dynamic.NewForConfigOrDie(injection.GetConfig(ctx)),
 	}
 }
 
@@ -77,6 +82,7 @@ func (oe *openshiftExtension) Transformers(tc v1alpha1.TektonComponent) []manife
 		openshiftcommon.RemoveRunAsUser(),
 		openshiftcommon.RemoveRunAsGroup(),
 		openshiftcommon.UpdateServiceMonitorTargetNamespace(tc.GetSpec().GetTargetNamespace()),
+		legacybuilds.WebhookReadiness(WebhookDeploymentName, WebhookContainerName, 8443),
 	}
 
 	// Only wire metrics over mTLS once the serving certificates exist, otherwise
@@ -107,6 +113,9 @@ func (oe *openshiftExtension) Transformers(tc v1alpha1.TektonComponent) []manife
 // front and caches them on the extension, so Transformers can shape the manifest
 // without repeating these lookups.
 func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+	if err := prepareLegacySharedResource(ctx, oe.kubernetesClient, oe.dynClient, tc.GetSpec().GetTargetNamespace()); err != nil {
+		return err
+	}
 	tlsEnvVars, err := openshiftcommon.ResolveCentralTLSToEnvVars(ctx, oe.tektonConfigLister)
 	if err != nil {
 		return err
@@ -125,7 +134,19 @@ func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekt
 // the main manifests are in place.
 func (oe *openshiftExtension) PostReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	sr := tc.(*v1alpha1.SharedResource)
+	if err := oe.reconcileNetworkPolicies(ctx, sr); err != nil {
+		return err
+	}
+	if err := waitForNodePluginReady(ctx, oe.kubernetesClient, sr.Spec.TargetNamespace); err != nil {
+		return err
+	}
+	if err := legacybuilds.WaitForWebhookReady(ctx, oe.kubernetesClient, sr.Spec.TargetNamespace, WebhookDeploymentName); err != nil {
+		return err
+	}
+	return migrateLegacySharedResource(ctx, oe.kubernetesClient, oe.dynClient, oe.operatorClientset, sr)
+}
 
+func (oe *openshiftExtension) reconcileNetworkPolicies(ctx context.Context, sr *v1alpha1.SharedResource) error {
 	// Install Network Policies
 	if sr.Spec.NetworkPolicy.Disabled {
 		return oe.installerSetClient.CleanupCustomSet(ctx, NetworkPolicySet)

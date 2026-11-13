@@ -30,6 +30,11 @@ runAsUser:
   type: RunAsAny
 seLinuxContext:
   type: MustRunAs
+seccompProfiles:
+# The first entry remains the default; Buildah explicitly requests unconfined
+# for unshare(CLONE_NEWUSER). See docs/ShipwrightBuild.md.
+- runtime/default
+- unconfined
 supplementalGroups:
   type: RunAsAny
 volumes:

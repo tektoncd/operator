@@ -30,9 +30,12 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/shipwrightbuild"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	openshiftcommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift/common/legacybuilds"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
 
@@ -45,16 +48,17 @@ type openshiftExtension struct {
 	// ShipwrightBuild instance.
 	installerSetClient *client.InstallerSetClient
 	kubernetesClient   kubernetes.Interface
+	dynClient          dynamic.Interface
+	operatorClient     versioned.Interface
+	tektonConfigLister openshiftcommon.TektonConfigLister
+	// resolvedTLSConfig holds the cluster-wide TLS version/cipher policy to push
+	// onto the webhook; nil when no central policy is configured.
+	resolvedTLSConfig *openshiftcommon.TLSEnvVars
 	// metricsMTLSReady reports whether the OpenShift service-ca has provisioned
 	// the certificates needed to serve metrics over mTLS.
 	metricsMTLSReady bool
-	operatorClient   versioned.Interface
 	// platformParams holds platform-specific values for building NetworkPolicy rules.
 	platformParams networkpolicy.PlatformParams
-	// resolvedTLSConfig holds the cluster-wide TLS version/cipher policy to push
-	// onto the webhook; nil when no central policy is configured.
-	resolvedTLSConfig  *openshiftcommon.TLSEnvVars
-	tektonConfigLister openshiftcommon.TektonConfigLister
 }
 
 // NewOpenShiftExtension builds the OpenShift extension for the Shipwright Build component.
@@ -73,6 +77,7 @@ func NewOpenShiftExtension(ctx context.Context) common.Extension {
 		kubernetesClient:   kubeclient.Get(ctx),
 		operatorClient:     operatorclient.Get(ctx),
 		platformParams:     networkpolicy.OpenShiftPlatformDefaults(),
+		dynClient:          dynamic.NewForConfigOrDie(injection.GetConfig(ctx)),
 		tektonConfigLister: tektonconfiginformer.Get(ctx).Lister(),
 	}
 }
@@ -88,6 +93,8 @@ func (oe *openshiftExtension) Transformers(tc v1alpha1.TektonComponent) []manife
 		openshiftcommon.RemoveRunAsGroup(),
 		openshiftcommon.AddServiceCABundle(common.KindCustomResourceDefinition, nil),
 		openshiftcommon.AddServiceCertificate(shipwrightbuild.WebhookServiceName, shipwrightbuild.WebhookSecretName),
+		buildahSeccompProfile(),
+		legacybuilds.WebhookReadiness(shipwrightbuild.WebhookDeploymentName, shipwrightbuild.WebhookContainerName, 8443),
 	}
 
 	// Only wire metrics over mTLS once the serving certificates exist, otherwise
@@ -123,10 +130,18 @@ func (oe *openshiftExtension) Transformers(tc v1alpha1.TektonComponent) []manife
 	return transformers
 }
 
-// PreReconcile resolves the cluster's TLS policy and metrics-mTLS readiness up
-// front and caches them on the extension, so Transformers can shape the manifest
-// without repeating these lookups.
+// PreReconcile stops the legacy manager before shared manifests are applied,
+// then caches TLS policy and metrics-mTLS readiness for Transformers.
 func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+	if err := legacybuilds.Prepare(ctx, oe.kubernetesClient, oe.dynClient); err != nil {
+		return err
+	}
+	if tc.GetSpec().GetTargetNamespace() != legacybuilds.Namespace {
+		if err := legacybuilds.StopDeployment(ctx, oe.kubernetesClient, shipwrightbuild.ControllerDeploymentName); err != nil {
+			return err
+		}
+	}
+
 	tlsEnvVars, err := openshiftcommon.ResolveCentralTLSToEnvVars(ctx, oe.tektonConfigLister)
 	if err != nil {
 		return err
@@ -148,11 +163,19 @@ func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekt
 }
 
 // PostReconcile applies the OpenShift NetworkPolicies for Shipwright Build after
-// the main manifests are in place.
+// the main manifests are in place, then runs the legacy installation handoff.
 func (oe *openshiftExtension) PostReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	sb := tc.(*v1alpha1.ShipwrightBuild)
+	if err := oe.reconcileNetworkPolicies(ctx, sb); err != nil {
+		return err
+	}
+	if err := legacybuilds.WaitForWebhookReady(ctx, oe.kubernetesClient, sb.Spec.TargetNamespace, shipwrightbuild.WebhookDeploymentName); err != nil {
+		return err
+	}
+	return migrateFromLegacyInstallation(ctx, oe.kubernetesClient, oe.dynClient, oe.operatorClient, sb)
+}
 
-	// Install Network Policies
+func (oe *openshiftExtension) reconcileNetworkPolicies(ctx context.Context, sb *v1alpha1.ShipwrightBuild) error {
 	if sb.Spec.NetworkPolicy.Disabled {
 		return oe.installerSetClient.CleanupCustomSet(ctx, NetworkPolicySet)
 	}

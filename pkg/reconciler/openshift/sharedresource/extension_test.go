@@ -32,6 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	dynfake "k8s.io/client-go/dynamic/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
 func controllerDeployment(t *testing.T) unstructured.Unstructured {
@@ -67,9 +69,9 @@ func namespaceResource(t *testing.T) unstructured.Unstructured {
 }
 
 // baseTransformerCount is the number of transformers the extension always applies
-// (RemoveRunAsUser, RemoveRunAsGroup, UpdateServiceMonitorTargetNamespace),
-// independent of TLS policy or metrics-mTLS.
-const baseTransformerCount = 3
+// (RemoveRunAsUser, RemoveRunAsGroup, UpdateServiceMonitorTargetNamespace,
+// WebhookReadiness), independent of TLS policy or metrics-mTLS.
+const baseTransformerCount = 4
 
 func webhookDeployment(t *testing.T) unstructured.Unstructured {
 	t.Helper()
@@ -205,9 +207,25 @@ func TestOpenShiftExtensionPostReconcileNetworkPolicyDisabled(t *testing.T) {
 
 	fakeClient := fakeoperatorclient.NewSimpleClientset(npSet, mainSet)
 	tisClient := fakeClient.OperatorV1alpha1().TektonInstallerSets()
+	one := int32(1)
+	nodePlugin := &appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{Name: NodeDaemonSetName},
+		Status: appsv1.DaemonSetStatus{
+			DesiredNumberScheduled: 1, UpdatedNumberScheduled: 1,
+			NumberReady: 1, NumberAvailable: 1,
+		},
+	}
+	webhook := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: WebhookDeploymentName},
+		Spec:       appsv1.DeploymentSpec{Replicas: &one},
+		Status:     appsv1.DeploymentStatus{UpdatedReplicas: 1, ReadyReplicas: 1, AvailableReplicas: 1},
+	}
 	oe := &openshiftExtension{
 		installerSetClient: installersetclient.NewInstallerSetClient(
 			tisClient, "test-version", OperandName, v1alpha1.KindSharedResource, nil),
+		kubernetesClient:  kubefake.NewSimpleClientset(nodePlugin, webhook),
+		operatorClientset: fakeClient,
+		dynClient:         dynfake.NewSimpleDynamicClient(runtime.NewScheme()),
 	}
 
 	sr := &v1alpha1.SharedResource{

@@ -111,6 +111,13 @@ var preUpgradeMigrations = []Migration{
 		Description:   "migrates PaC hub catalog settings to artifacthub",
 		Fn:            preUpgradePipelinesAsCodeArtifacts,
 	},
+	{
+		Name:          "preUpgradeLegacyBuilds",
+		Introduced:    "0.82.0",
+		DeletableFrom: "0.84.0",
+		Description:   "preserves standalone Builds enablement on OpenShift",
+		Fn:            preUpgradeLegacyBuilds,
+	},
 }
 
 // postUpgradeMigrations is the post-upgrade registry.

@@ -31,13 +31,26 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	tektoninstallersetclient "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift/common/legacybuilds"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
+	kubeinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
+
+func init() {
+	// Knative's vendored generated informers do not include DaemonSets. Register
+	// the existing shared factory's informer for startup/cache synchronization.
+	injection.Default.RegisterInformer(func(ctx context.Context) (context.Context, controller.Informer) {
+		return ctx, kubeinformerfactory.Get(ctx).Apps().V1().DaemonSets().Informer()
+	})
+}
 
 // NewController initializes the controller and is called by the generated code
 // Registers event handlers to enqueue events
@@ -100,7 +113,37 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}); err != nil {
 			logger.Panicf("Couldn't register TektonInstallerSet informer event handler: %w", err)
 		}
+		// Legacy workloads have no InstallerSet owner. Observe shutdown progress
+		// and OLM restarts even after a completed migration.
+		if _, err := deploymentinformer.Get(ctx).Informer().AddEventHandler(legacyWorkloadEventHandler(impl.EnqueueKey)); err != nil {
+			logger.Panicf("Couldn't register legacy Builds Deployment informer event handler: %w", err)
+		}
+		if _, err := kubeinformerfactory.Get(ctx).Apps().V1().DaemonSets().Informer().AddEventHandler(legacyWorkloadEventHandler(impl.EnqueueKey)); err != nil {
+			logger.Panicf("Couldn't register legacy Builds DaemonSet informer event handler: %w", err)
+		}
 
 		return impl
+	}
+}
+
+func legacyWorkloadEventHandler(enqueue func(types.NamespacedName)) cache.ResourceEventHandler {
+	return cache.FilteringResourceEventHandler{
+		FilterFunc: func(obj interface{}) bool {
+			if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+				obj = tombstone.Obj
+			}
+			switch workload := obj.(type) {
+			case *appsv1.Deployment:
+				return workload.Namespace == legacybuilds.Namespace &&
+					(workload.Name == legacybuilds.OperatorDeployment || workload.Name == WebhookDeploymentName)
+			case *appsv1.DaemonSet:
+				return workload.Namespace == legacybuilds.Namespace && workload.Name == legacyNodeDaemonSet
+			default:
+				return false
+			}
+		},
+		Handler: controller.HandleAll(func(interface{}) {
+			enqueue(types.NamespacedName{Name: v1alpha1.SharedResourceResourceName})
+		}),
 	}
 }

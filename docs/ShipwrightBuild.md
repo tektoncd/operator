@@ -65,7 +65,9 @@ the operator will add them. The user can later change them as per their need.
  - `enabled`
 
     Enables or disables installation of the ShipwrightBuild component. Defaults to
-    `false`.
+    `false`, so the component is opt-in. Setting it to `true` installs the
+    Shipwright Build controller and webhook; setting it back to `false` removes the
+    component's resources on the next reconcile.
 
  - `config`
 
@@ -133,6 +135,19 @@ For more details, see the [NetworkPolicy](./NetworkPolicy.md) documentation.
 
 Only a single instance of ShipwrightBuild is allowed on the cluster. The instance
 must be named `shipwright-build`; the validating webhook rejects any other name.
+
+## OpenShift Buildah seccomp
+
+The Buildah steps in the bundled `buildah` and `source-to-image` strategies
+explicitly request `Unconfined` seccomp. Buildah needs `unshare(CLONE_NEWUSER)`;
+the runtime's default seccomp profile can block this syscall before a build starts.
+Source-fetching and other strategy steps do not receive this override.
+
+`pipelines-scc` lists `runtime/default` first, keeping it as the default, and
+permits an explicit `unconfined` request. The latter disables seccomp filtering
+for that container. This permission applies to every service account authorized
+to use `pipelines-scc`, including custom tasks; it is not restricted to the two
+bundled strategies by SCC admission.
 
 [shipwright]:https://github.com/shipwright-io/build
 [np]:https://kubernetes.io/docs/concepts/services-networking/network-policies/

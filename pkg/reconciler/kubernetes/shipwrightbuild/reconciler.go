@@ -125,7 +125,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, sb *v1alpha1.ShipwrightB
 
 	// Install the ClusterBuildStrategies as a separate post set, since they are
 	// applied only after the core component is in place.
-	if err := r.installerSetClient.PostSet(ctx, sb, r.strategyManifest, NopFilterAndTransform()); err != nil {
+	if err := r.installerSetClient.PostSet(ctx, sb, r.strategyManifest, StrategyFilterAndTransform(r)); err != nil {
 		msg := fmt.Sprintf("Failed to install custom set: %s", err.Error())
 		logger.Error(msg)
 		if errors.Is(err, v1alpha1.REQUEUE_EVENT_AFTER) {

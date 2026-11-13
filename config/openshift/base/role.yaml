@@ -44,6 +44,14 @@ rules:
   - list
   - update
   - watch
+# to keep OLM from restarting the legacy Builds manager during handoff
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - clusterserviceversions
+  verbs:
+  - get
+  - update
 - apiGroups:
   - extensions
   - apps
@@ -445,3 +453,10 @@ rules:
     - update
     - patch
     - delete
+# to detect the legacy OpenShiftBuild installation during migration
+- apiGroups:
+  - operator.openshift.io
+  resources:
+  - openshiftbuilds
+  verbs:
+  - get
