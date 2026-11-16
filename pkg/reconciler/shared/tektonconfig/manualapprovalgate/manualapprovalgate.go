@@ -51,7 +51,7 @@ func EnsureManualApprovalGateExists(ctx context.Context, clients op.ManualApprov
 		return nil, err
 	}
 	if !ready {
-		return nil, v1alpha1.RECONCILE_AGAIN_ERR
+		return nil, v1alpha1.NotReadyError(&magCR.Status)
 	}
 
 	return magCR, err

@@ -62,7 +62,7 @@ func EnsureOpenShiftPipelinesAsCodeExists(ctx context.Context, clients op.OpenSh
 		return nil, err
 	}
 	if !ok {
-		return nil, v1alpha1.RECONCILE_AGAIN_ERR
+		return nil, v1alpha1.NotReadyError(&opacCR.Status)
 	}
 
 	return opacCR, err
