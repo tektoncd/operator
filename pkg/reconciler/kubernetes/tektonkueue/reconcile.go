@@ -77,13 +77,19 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, TektonKueue *v1alpha1.Te
 		return nil
 	}
 
-	// Run platform cleanup before dependency checks so deselection works even
-	// when an API needed by the previous installation is no longer available.
+	// Run the platform hook before the dependency checks. Removing a deselected
+	// ACM plugin then works even when an API needed by the previous installation
+	// is no longer available, and a selected plugin can install the dependencies.
 	if err := r.extension.PreReconcile(ctx, TektonKueue); err != nil {
 		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
 		logger.Error(msg)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
 			return err
+		}
+		if errors.Is(err, v1alpha1.REQUEUE_EVENT_AFTER) {
+			// A wrapped requeue says why it waits. Report the reason and retry.
+			TektonKueue.Status.MarkPreReconcilerFailed(err.Error())
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		TektonKueue.Status.MarkPreReconcilerFailed(msg)
 		return nil
@@ -151,11 +157,14 @@ func (r *Reconciler) ensureDependenciesInstalled(TektonKueue *v1alpha1.TektonKue
 		return err
 	}
 
+	// Tekton Kueue's webhook gets its certificates from cert-manager, so nothing
+	// is installed until cert-manager and Kueue are both there.
 	discoveryClient := r.kubeClientSet.Discovery()
-	_, err := discoveryClient.ServerResourcesForGroupVersion("kueue.x-k8s.io/v1beta1")
-	if err != nil {
-		TektonKueue.Status.MarkDependencyMissing("API kueue.x-k8s.io/v1beta1 does not exist. Please install kueue.x-k8s.io/v1beta1")
-		return err
+	for _, gv := range []string{"cert-manager.io/v1", "kueue.x-k8s.io/v1beta1"} {
+		if _, err := discoveryClient.ServerResourcesForGroupVersion(gv); err != nil {
+			TektonKueue.Status.MarkDependencyMissing(fmt.Sprintf("API %s does not exist. Please install %s", gv, gv))
+			return err
+		}
 	}
 
 	return nil

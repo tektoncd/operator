@@ -18,6 +18,7 @@ package kueue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -28,11 +29,6 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-)
-
-const (
-	KUEUE_GVK = "kueue.x-k8s.io/v1beta1"
-	CERT_GVK  = "cert-manager.io/v1"
 )
 
 func EnsureTektonKueueExists(ctx context.Context, clients op.TektonKueueInterface, newKueue *v1alpha1.TektonKueue) (*v1alpha1.TektonKueue, error) {
@@ -60,6 +56,10 @@ func EnsureTektonKueueExists(ctx context.Context, clients op.TektonKueueInterfac
 	}
 
 	if !ok {
+		// Pass on TektonKueue's own reason, so that TektonConfig shows the cause.
+		if ready := TektonKueue.Status.GetCondition(apis.ConditionReady); ready != nil && ready.Message != "" {
+			return nil, errors.New(ready.Message)
+		}
 		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
@@ -70,27 +70,6 @@ func EnsureTektonKueueExists(ctx context.Context, clients op.TektonKueueInterfac
 // If MultiCluster is enabled and MultiClusterRole=Hub then MultiKueueOverride should be true
 func setMultiKueueOverride(kueue *v1alpha1.TektonKueue) {
 	kueue.Spec.Config.MultiKueueOverride = !kueue.Spec.MultiClusterDisabled && strings.EqualFold(string(kueue.Spec.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub))
-}
-
-// propagateACMDeselection updates an existing TektonKueue that still enables the
-// ACM plugin when newKueue no longer does, so that TektonKueue can remove it.
-func propagateACMDeselection(ctx context.Context, clients op.TektonKueueInterface, newKueue *v1alpha1.TektonKueue) error {
-	if newKueue.Spec.Kueue.IsACMPluginEnabled() {
-		return nil
-	}
-	TektonKueue, err := GetTektonKueue(ctx, clients, v1alpha1.TektonKueueResourceName)
-	if err != nil {
-		if apierrs.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	if !TektonKueue.Spec.Kueue.IsACMPluginEnabled() {
-		return nil
-	}
-	setMultiKueueOverride(newKueue)
-	_, err = UpdateKueue(ctx, TektonKueue, newKueue, clients)
-	return err
 }
 
 func GetTektonKueue(ctx context.Context, clients op.TektonKueueInterface, name string) (*v1alpha1.TektonKueue, error) {
@@ -219,28 +198,11 @@ func EnsureTektonComponent(ctx context.Context, tc *v1alpha1.TektonConfig, opera
 		// If TektonKueue is disabled then uninstall the components
 		return EnsureTektonKueueCRNotExists(ctx, operatorClientSet.OperatorV1alpha1().TektonKueues())
 	}
-	// Propagate an ACM plugin deselection before the prerequisite checks, so that
-	// TektonKueue removes the plugin even when a prerequisite is no longer available.
+
+	// cert-manager and Kueue are not checked here. TektonKueue waits for both
+	// itself, after its PreReconcile step, which may install them. Its reason is
+	// reported below.
 	TektonKueue := GetTektonKueueCR(tc, operatorVersion)
-	if err := propagateACMDeselection(ctx, operatorClientSet.OperatorV1alpha1().TektonKueues(), TektonKueue); err != nil {
-		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonKueue : %s", err.Error()))
-		return v1alpha1.REQUEUE_EVENT_AFTER
-	}
-	// Cert-Manager should also be pre-installed
-	_, err := operatorClientSet.Discovery().ServerResourcesForGroupVersion(CERT_GVK)
-	if err != nil {
-		tc.Status.MarkComponentNotReady(fmt.Sprintf("Please install cert-manager (%s) First, %s ", CERT_GVK, err.Error()))
-		return v1alpha1.REQUEUE_EVENT_AFTER
-	}
-
-	// Before Installing Kueue, Make sure that Upstream Kueue is installed
-	_, err = operatorClientSet.Discovery().ServerResourcesForGroupVersion(KUEUE_GVK)
-	if err != nil {
-		tc.Status.MarkComponentNotReady(fmt.Sprintf("Please install kueue (%s) First, %s ", KUEUE_GVK, err.Error()))
-		return v1alpha1.REQUEUE_EVENT_AFTER
-	}
-
-	// If Kueue is installed then create TektonKueue CR
 	if _, err := EnsureTektonKueueExists(ctx, operatorClientSet.OperatorV1alpha1().TektonKueues(), TektonKueue); err != nil {
 		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonKueue : %s", err.Error()))
 		return v1alpha1.REQUEUE_EVENT_AFTER
