@@ -38,6 +38,14 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 
 ## Release
 
+### v0.82 (LTS)
+- **Latest Release**: [v0.82.0][v0.82-0] (2026-11-16) ([docs][v0.82-0-docs])
+- **Initial Release**: [v0.82.0][v0.82-0] (2026-11-16)
+- **End of Life**: 2027-11-16
+- **Patch Releases**: [v0.82.0][v0.82-0]
+- **Minimum Kubernetes**: 1.28.x
+- **Pipeline**: v1.18.x
+
 ### v0.81 (LTS)
 - **Latest Release**: [v0.81.1][v0.81-1] (2026-08-20) ([docs][v0.81-1-docs])
 - **Initial Release**: [v0.81.0][v0.81-0] (2026-08-10)
@@ -116,6 +124,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [release-notes-standards]:
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
 
+[v0.82-0]: https://github.com/tektoncd/operator/releases/tag/v0.82.0
 [v0.81-1]: https://github.com/tektoncd/operator/releases/tag/v0.81.1
 [v0.81-0]: https://github.com/tektoncd/operator/releases/tag/v0.81.0
 [v0.80-0]: https://github.com/tektoncd/operator/releases/tag/v0.80.0
@@ -129,6 +138,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [v0.77-1]: https://github.com/tektoncd/operator/releases/tag/v0.77.1
 [v0.77-0]: https://github.com/tektoncd/operator/releases/tag/v0.77.0
 
+[v0.82-0-docs]: https://github.com/tektoncd/operator/tree/v0.82.0/docs
 [v0.81-1-docs]: https://github.com/tektoncd/operator/tree/v0.81.1/docs
 [v0.80-0-docs]: https://github.com/tektoncd/operator/tree/v0.80.0/docs
 [v0.79-2-docs]: https://github.com/tektoncd/operator/tree/v0.79.2/docs
