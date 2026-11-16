@@ -126,9 +126,10 @@ Kueue and cert-manager do not have to be installed first. The operator installs
 the plugin before Tekton Kueue. When the hub has no Subscription for the OpenShift
 Kueue or cert-manager operator, the plugin creates one from the `redhat-operators`
 catalog, on the channel defined by the bundled plugin release. Tekton Kueue is
-installed once both APIs are served. The operator does not check how Kueue was
-installed, so do not use `acm` on a hub that runs a Kueue other than OpenShift
-Kueue.
+installed once both APIs are served, and the
+[proxy](./TektonMulticlusterProxyAAE.md) once Kueue serves MultiKueueClusters. The
+operator does not check how Kueue was installed, so do not use `acm` on a hub that
+runs a Kueue other than OpenShift Kueue.
 
 While the plugin or one of these APIs is missing, TektonKueue is not ready, and
 TektonConfig reports the same reason.
