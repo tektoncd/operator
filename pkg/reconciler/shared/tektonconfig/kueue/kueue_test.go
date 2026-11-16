@@ -18,17 +18,14 @@ package kueue
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
 	"gotest.tools/v3/assert"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	discoveryfake "k8s.io/client-go/discovery/fake"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/utils/ptr"
 )
@@ -77,14 +74,6 @@ func newComponentFixture(t *testing.T, plugin v1alpha1.FleetManager) *componentF
 	}}
 }
 
-func (f *componentFixture) setAPIs(groupVersions ...string) {
-	resources := []*metav1.APIResourceList{}
-	for _, gv := range groupVersions {
-		resources = append(resources, &metav1.APIResourceList{GroupVersion: gv})
-	}
-	f.clients.Discovery().(*discoveryfake.FakeDiscovery).Resources = resources
-}
-
 // requeue runs EnsureTektonComponent, which must ask for a retry, and returns the reported reason.
 func (f *componentFixture) requeue() string {
 	f.t.Helper()
@@ -106,10 +95,9 @@ func (f *componentFixture) child() *v1alpha1.TektonKueue {
 	return child
 }
 
-// install creates a ready TektonKueue while both prerequisites exist, then leaves only the available one.
-func (f *componentFixture) install(available string) {
+// install creates a ready TektonKueue.
+func (f *componentFixture) install() {
 	f.t.Helper()
-	f.setAPIs(CERT_GVK, KUEUE_GVK)
 	f.requeue()
 	child := f.child()
 	child.Status.MarkDependenciesInstalled()
@@ -120,75 +108,74 @@ func (f *componentFixture) install(available string) {
 	_, err := f.clients.OperatorV1alpha1().TektonKueues().UpdateStatus(f.t.Context(), child, metav1.UpdateOptions{})
 	assert.NilError(f.t, err)
 	assert.NilError(f.t, EnsureTektonComponent(f.t.Context(), f.config, f.clients, "v1"))
-	f.setAPIs(available)
 }
 
-func TestEnsureTektonComponentMissingPrerequisite(t *testing.T) {
-	for _, tt := range []struct{ name, available, message string }{
-		{name: "cert-manager", available: KUEUE_GVK, message: "Please install cert-manager"},
-		{name: "kueue", available: CERT_GVK, message: "Please install kueue"},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Run("acm to manual is propagated", func(t *testing.T) {
-				f := newComponentFixture(t, v1alpha1.FleetManagerACM)
-				f.install(tt.available)
-				f.config.Spec.Kueue.FleetManager = v1alpha1.FleetManagerManual
-				f.requeue()
-				child := f.child()
-				assert.Equal(t, child.Spec.FleetManager, v1alpha1.FleetManagerManual)
-				assert.Assert(t, !child.Spec.Kueue.IsACMPluginEnabled())
-				assert.Assert(t, child.Spec.Config.MultiKueueOverride)
-				// The prerequisite still gates readiness once the deselection is propagated.
-				f.blocked(tt.message)
-			})
+// TektonKueue waits for cert-manager and Kueue itself, so it is created and
+// updated without a check for them here. The fake cluster serves neither API.
+func TestEnsureTektonComponentDoesNotCheckPrerequisites(t *testing.T) {
+	t.Run("fresh install", func(t *testing.T) {
+		for _, plugin := range []v1alpha1.FleetManager{v1alpha1.FleetManagerManual, v1alpha1.FleetManagerACM} {
+			f := newComponentFixture(t, plugin)
+			f.requeue()
+			assert.Equal(t, f.child().Spec.FleetManager, plugin)
+		}
+	})
 
-			t.Run("fresh install waits", func(t *testing.T) {
-				for _, plugin := range []v1alpha1.FleetManager{v1alpha1.FleetManagerManual, v1alpha1.FleetManagerACM} {
-					f := newComponentFixture(t, plugin)
-					f.setAPIs(tt.available)
-					f.blocked(tt.message)
-					_, err := f.clients.OperatorV1alpha1().TektonKueues().Get(t.Context(), v1alpha1.TektonKueueResourceName, metav1.GetOptions{})
-					assert.Assert(t, apierrs.IsNotFound(err), "TektonKueue must not be created: %v", err)
-				}
-			})
+	t.Run("acm to manual is propagated", func(t *testing.T) {
+		f := newComponentFixture(t, v1alpha1.FleetManagerACM)
+		f.install()
+		f.config.Spec.Kueue.FleetManager = v1alpha1.FleetManagerManual
+		f.requeue()
+		child := f.child()
+		assert.Equal(t, child.Spec.FleetManager, v1alpha1.FleetManagerManual)
+		assert.Assert(t, !child.Spec.Kueue.IsACMPluginEnabled())
+		assert.Assert(t, child.Spec.Config.MultiKueueOverride)
+	})
 
-			t.Run("acm activation waits", func(t *testing.T) {
-				f := newComponentFixture(t, v1alpha1.FleetManagerManual)
-				f.install(tt.available)
-				want := f.child()
-				f.config.Spec.Kueue.FleetManager = v1alpha1.FleetManagerACM
-				f.blocked(tt.message)
-				assert.Assert(t, reflect.DeepEqual(f.child(), want), "TektonKueue must not change")
-			})
+	t.Run("manual to acm is propagated", func(t *testing.T) {
+		f := newComponentFixture(t, v1alpha1.FleetManagerManual)
+		f.install()
+		f.config.Spec.Kueue.FleetManager = v1alpha1.FleetManagerACM
+		f.requeue()
+		assert.Assert(t, f.child().Spec.Kueue.IsACMPluginEnabled())
+	})
 
-			t.Run("update failure is reported and retried", func(t *testing.T) {
-				f := newComponentFixture(t, v1alpha1.FleetManagerACM)
-				f.install(tt.available)
-				fail := true
-				f.clients.PrependReactor("update", "tektonkueues", func(clienttesting.Action) (bool, runtime.Object, error) {
-					if fail {
-						return true, nil, fmt.Errorf("update failed")
-					}
-					return false, nil, nil
-				})
-				f.config.Spec.Kueue.FleetManager = v1alpha1.FleetManagerManual
-				f.blocked("TektonKueue : update failed")
-				assert.Assert(t, f.child().Spec.Kueue.IsACMPluginEnabled())
-				fail = false
-				f.requeue()
-				assert.Assert(t, !f.child().Spec.Kueue.IsACMPluginEnabled())
-			})
-
-			t.Run("ready manual child waits", func(t *testing.T) {
-				f := newComponentFixture(t, v1alpha1.FleetManagerManual)
-				f.install(tt.available)
-				want := f.child()
-				f.blocked(tt.message)
-				// A pending change must wait for the prerequisite as well.
-				f.config.Spec.TargetNamespace = "other"
-				f.blocked(tt.message)
-				assert.Assert(t, reflect.DeepEqual(f.child(), want), "TektonKueue must not change")
-			})
+	t.Run("update failure is reported and retried", func(t *testing.T) {
+		f := newComponentFixture(t, v1alpha1.FleetManagerACM)
+		f.install()
+		fail := true
+		f.clients.PrependReactor("update", "tektonkueues", func(clienttesting.Action) (bool, runtime.Object, error) {
+			if fail {
+				return true, nil, fmt.Errorf("update failed")
+			}
+			return false, nil, nil
 		})
-	}
+		f.config.Spec.Kueue.FleetManager = v1alpha1.FleetManagerManual
+		f.blocked("TektonKueue : update failed")
+		assert.Assert(t, f.child().Spec.Kueue.IsACMPluginEnabled())
+		fail = false
+		f.requeue()
+		assert.Assert(t, !f.child().Spec.Kueue.IsACMPluginEnabled())
+	})
+}
+
+// TektonConfig reports why TektonKueue is not ready, not only that it waits.
+func TestEnsureTektonComponentReportsReason(t *testing.T) {
+	f := newComponentFixture(t, v1alpha1.FleetManagerACM)
+	// A new TektonKueue has no reason to report yet.
+	f.blocked("TektonKueue : " + v1alpha1.RECONCILE_AGAIN_ERR.Error())
+
+	child := f.child()
+	child.Status.MarkPreReconcilerFailed("ACM plugin requires API work.open-cluster-management.io/v1: requeue after: 10s")
+	_, err := f.clients.OperatorV1alpha1().TektonKueues().UpdateStatus(t.Context(), child, metav1.UpdateOptions{})
+	assert.NilError(t, err)
+	f.blocked("TektonKueue : PreReconciliation failed with message: ACM plugin requires API work.open-cluster-management.io/v1: requeue after: 10s")
+
+	// A missing prerequisite is reported the same way.
+	child = f.child()
+	child.Status.MarkPreReconcilerComplete()
+	child.Status.MarkDependencyMissing("API cert-manager.io/v1 does not exist. Please install cert-manager.io/v1")
+	_, err = f.clients.OperatorV1alpha1().TektonKueues().UpdateStatus(t.Context(), child, metav1.UpdateOptions{})
+	assert.NilError(t, err)
+	f.blocked("TektonKueue : Dependency missing: API cert-manager.io/v1 does not exist. Please install cert-manager.io/v1")
 }

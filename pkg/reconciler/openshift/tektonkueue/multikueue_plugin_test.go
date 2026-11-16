@@ -58,12 +58,13 @@ func pluginManifest(t *testing.T) mf.Manifest {
 	return m
 }
 
+// pluginDiscovery serves the APIs the plugin needs to start. The hub has no
+// cert-manager and no Kueue: the plugin installs them.
 func pluginDiscovery() *discoveryfake.FakeDiscovery {
 	d := k8sfake.NewSimpleClientset().Discovery().(*discoveryfake.FakeDiscovery)
 	for _, gv := range []string{
 		"cluster.open-cluster-management.io/v1", "authentication.open-cluster-management.io/v1beta1",
 		"work.open-cluster-management.io/v1", "operators.coreos.com/v1", "operators.coreos.com/v1alpha1",
-		"kueue.openshift.io/v1", "kueue.x-k8s.io/v1beta2",
 	} {
 		d.Resources = append(d.Resources, &metav1.APIResourceList{GroupVersion: gv})
 	}
@@ -78,15 +79,14 @@ func TestPluginLifecycle(t *testing.T) {
 		manifest: pluginManifest(t), discovery: pluginDiscovery(),
 		installerSetClient: client.NewInstallerSetClient(isClient, "v1", "plugin", v1alpha1.KindTektonKueue, nil),
 	}
-	assert.NilError(t, oe.PreReconcile(ctx, kueue))
-	assert.Equal(t, oe.PostReconcile(ctx, kueue), v1alpha1.REQUEUE_EVENT_AFTER)
+	// PreReconcile installs the plugin, and asks for a retry until it is ready.
+	assert.ErrorIs(t, oe.PreReconcile(ctx, kueue), v1alpha1.REQUEUE_EVENT_AFTER)
 	sets, err := isClient.List(ctx, metav1.ListOptions{})
 	assert.NilError(t, err)
 	assert.Equal(t, len(sets.Items), 1)
 	set := sets.Items[0]
 	assert.Equal(t, set.OwnerReferences[0].UID, kueue.UID)
 	assert.Equal(t, set.Labels[v1alpha1.InstallerSetType], "custom-multikueue-plugin")
-	assert.Assert(t, !kueue.Status.IsReady())
 	set.Status.MarkCRDsInstalled()
 	set.Status.MarkNamespaceScopedResourcesInstalled()
 	set.Status.MarkClustersScopedResourcesInstalled()
@@ -99,15 +99,15 @@ func TestPluginLifecycle(t *testing.T) {
 	set.Status.MarkJobsInstalled()
 	_, err = isClient.Update(ctx, &set, metav1.UpdateOptions{})
 	assert.NilError(t, err)
-	assert.NilError(t, oe.PostReconcile(ctx, kueue))
+	assert.NilError(t, oe.PreReconcile(ctx, kueue))
 	sets, err = isClient.List(ctx, metav1.ListOptions{})
 	assert.NilError(t, err)
 	assert.Equal(t, sets.Items[0].Name, set.Name)
 
 	// An operator upgrade replaces the plugin set using the pinned payload.
 	oe.installerSetClient = client.NewInstallerSetClient(isClient, "v2", "plugin", v1alpha1.KindTektonKueue, nil)
-	assert.Equal(t, oe.PostReconcile(ctx, kueue), v1alpha1.REQUEUE_EVENT_AFTER)
-	assert.Equal(t, oe.PostReconcile(ctx, kueue), v1alpha1.REQUEUE_EVENT_AFTER)
+	assert.ErrorIs(t, oe.PreReconcile(ctx, kueue), v1alpha1.REQUEUE_EVENT_AFTER)
+	assert.ErrorIs(t, oe.PreReconcile(ctx, kueue), v1alpha1.REQUEUE_EVENT_AFTER)
 	sets, err = isClient.List(ctx, metav1.ListOptions{})
 	assert.NilError(t, err)
 	assert.Equal(t, len(sets.Items), 1)
@@ -157,15 +157,12 @@ func TestPluginInactiveAndFinalize(t *testing.T) {
 	}
 }
 
+// A plugin that cannot be installed asks for a retry, and says why.
 func TestPluginMissingDependency(t *testing.T) {
-	kueue := pluginKueue()
-	kueue.Status.InitializeConditions()
-	kueue.Status.MarkPostReconcilerComplete()
 	oe := openshiftExtension{discovery: k8sfake.NewSimpleClientset().Discovery()}
-	assert.Equal(t, oe.PostReconcile(t.Context(), kueue), v1alpha1.REQUEUE_EVENT_AFTER)
-	condition := kueue.Status.GetCondition(v1alpha1.PostReconciler)
-	assert.Equal(t, condition.Status, corev1.ConditionFalse)
-	assert.Assert(t, condition.Message != "")
+	err := oe.PreReconcile(t.Context(), pluginKueue())
+	assert.ErrorIs(t, err, v1alpha1.REQUEUE_EVENT_AFTER)
+	assert.ErrorContains(t, err, "ACM plugin requires API cluster.open-cluster-management.io/v1")
 }
 
 func TestPluginCleanupRetries(t *testing.T) {

@@ -22,12 +22,12 @@ On **Spoke** clusters, leave `multi-cluster-role` as `Spoke`; the proxy is not i
 
 ## Prerequisites
 
-The proxy is only installed when the [Tekton Kueue](./TektonKueue.md) is enabled with multi-cluster (Hub role). **cert-manager** and **Kueue** (and **MultiKueue** for the proxy) are required for Tekton Kueue and multi-cluster in general; you must install them before enabling Tekton Kueue. For full prerequisites and multi-cluster configuration, see [Tekton Kueue](./TektonKueue.md). [TektonConfig](./TektonConfig.md) (Tekton Kueue section) also summarizes this and points to Tekton Kueue.
+The proxy is only installed when the [Tekton Kueue](./TektonKueue.md) is enabled with multi-cluster (Hub role). **cert-manager** and **Kueue** (and **MultiKueue** for the proxy) are required for Tekton Kueue and multi-cluster in general; you must install them before enabling Tekton Kueue, unless the `acm` [fleet manager](./TektonKueue.md#fleet-manager) installs them. For full prerequisites and multi-cluster configuration, see [Tekton Kueue](./TektonKueue.md). [TektonConfig](./TektonConfig.md) (Tekton Kueue section) also summarizes this and points to Tekton Kueue.
 
 If you see a config status error such as:
 
 ```
-Components not in ready state: Please install cert-manager (cert-manager.io/v1) First, the server could not find the requested resource
+Components not in ready state: TektonKueue : Dependency missing: API cert-manager.io/v1 does not exist. Please install cert-manager.io/v1
 ```
 
 cert-manager is not installed or its APIs are not available. Install [cert-manager](https://cert-manager.io/docs/installation/) (v1 API) and ensure [Kueue](https://kueue.sigs.k8s.io/) (and for the proxy, MultiKueue) are installed as described in [Tekton Kueue](./TektonKueue.md), then re-apply or reconcile TektonConfig.

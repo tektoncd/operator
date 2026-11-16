@@ -497,7 +497,7 @@ By default pruner job will be created from the global pruner config (`spec.prune
 
 ### Tekton Kueue
 
-The `spec.kueue` section allows you to install and manage the [Tekton Kueue](./TektonKueue.md) through TektonConfig. The Tekton Kueue component uses [Kueue](https://kueue.sigs.k8s.io) and [cert-manager](https://github.com/cert-manager/cert-manager); you must install Kueue and cert-manager CRDs before enabling Tekton Kueue. For full pre-requisites and multi-cluster configuration details, see [Tekton Kueue](./TektonKueue.md).
+The `spec.kueue` section allows you to install and manage the [Tekton Kueue](./TektonKueue.md) through TektonConfig. The Tekton Kueue component uses [Kueue](https://kueue.sigs.k8s.io) and [cert-manager](https://github.com/cert-manager/cert-manager); you must install Kueue and cert-manager CRDs before enabling Tekton Kueue, except on an OpenShift hub with `fleet-manager: acm`, where the plugin installs them. For full pre-requisites and multi-cluster configuration details, see [Tekton Kueue](./TektonKueue.md).
 
 The deprecated `spec.scheduler` field is migrated automatically to `spec.kueue` during pre-upgrade reconciliation. If both fields are configured, `spec.kueue` takes precedence.
 

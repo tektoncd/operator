@@ -59,17 +59,16 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	}
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
-	if !tc.(*v1alpha1.TektonKueue).Spec.Kueue.IsACMPluginEnabled() {
-		return oe.cleanupPlugin(ctx)
-	}
-	return nil
-}
-func (oe openshiftExtension) PostReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	kueue := tc.(*v1alpha1.TektonKueue)
 	if !kueue.Spec.Kueue.IsACMPluginEnabled() {
-		return nil
+		return oe.cleanupPlugin(ctx)
 	}
+	// The plugin goes before Tekton Kueue: it installs cert-manager and Kueue,
+	// which Tekton Kueue needs.
 	return oe.reconcilePlugin(ctx, kueue)
+}
+func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
+	return nil
 }
 func (oe openshiftExtension) Finalize(ctx context.Context, _ v1alpha1.TektonComponent) error {
 	// Only start the removal. TektonKueue owns the plugin installer set, so it
