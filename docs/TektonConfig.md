@@ -1246,6 +1246,7 @@ The following fields are supported in `deployment`
       - `tolerations` - replaces the existing tolerations with this, if not empty
       - `topologySpreadConstraints` - replaces the existing TopologySpreadConstraints with this, if not empty
       - `runtimeClassName` - adds and updates runtimeClassName
+      - `imagePullSecrets` - replaces the existing imagePullSecrets with this, if not empty
       - `volumes` - adds and updates volumes
       - `initContainers` - adds and updates init-containers
         - `resources` - replaces the resources requirements with this, if not empty
@@ -1284,6 +1285,7 @@ The following fields are supported in `StatefulSet`
       - `tolerations` - replaces the existing tolerations with this, if not empty
       - `topologySpreadConstraints` - replaces the existing TopologySpreadConstraints with this, if not empty
       - `runtimeClassName` - adds and updates runtimeClassName
+      - `imagePullSecrets` - replaces the existing imagePullSecrets with this, if not empty
       - `volumes` - adds and updates volumes
       - `initContainers` - adds and updates init-containers
         - `resources` - replaces the resources requirements with this, if not empty
