@@ -11,6 +11,13 @@ Install these APIs before enabling Tekton Kueue:
 - [Kueue](https://kueue.sigs.k8s.io/)
 - [cert-manager](https://cert-manager.io/docs/installation/)
 
+On an OpenShift hub that uses the `acm` [fleet manager](#fleet-manager), the
+plugin installs them when they are missing.
+
+Tekton Kueue itself is not installed while one of them is missing. TektonKueue
+reports, for example, `Dependency missing: API cert-manager.io/v1 does not exist.
+Please install cert-manager.io/v1`, and TektonConfig shows the same reason.
+
 ## Configuration
 
 Enable Tekton Kueue through `TektonConfig`:
@@ -112,9 +119,19 @@ spec:
 For a standalone TektonKueue, set the same fields directly under `spec`.
 Existing installations default to `manual`.
 
-The hub requires Kueue, cert-manager, OLM, the OpenShift Kueue API, and the OCM
-ManagedCluster, ManifestWork and ManagedServiceAccount APIs. The plugin release
-uses `kueue.x-k8s.io/v1beta2`. Its ManagedServiceAccount add-on must also be running.
+The hub requires OLM and the OCM ManagedCluster, ManifestWork and
+ManagedServiceAccount APIs. Its ManagedServiceAccount add-on must also be running.
+
+Kueue and cert-manager do not have to be installed first. The operator installs
+the plugin before Tekton Kueue. When the hub has no Subscription for the OpenShift
+Kueue or cert-manager operator, the plugin creates one from the `redhat-operators`
+catalog, on the channel defined by the bundled plugin release. Tekton Kueue is
+installed once both APIs are served. The operator does not check how Kueue was
+installed, so do not use `acm` on a hub that runs a Kueue other than OpenShift
+Kueue.
+
+While the plugin or one of these APIs is missing, TektonKueue is not ready, and
+TektonConfig reports the same reason.
 
 The current plugin enrolls all non-local ManagedClusters, bootstraps operators on
 workers, and creates its default hub queue resources. These behaviors are defined

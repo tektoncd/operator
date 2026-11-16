@@ -18,9 +18,9 @@ package tektonkueue
 
 import (
 	"context"
-	"fmt"
 
 	mf "github.com/manifestival/manifestival"
+	"github.com/pkg/errors"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift"
@@ -33,25 +33,24 @@ import (
 
 const multiKueuePluginSet = "multikueue-plugin"
 
+// reconcilePlugin installs the plugin. Until it is ready, it returns a requeue
+// error that is wrapped with the reason.
 func (oe openshiftExtension) reconcilePlugin(ctx context.Context, kueue *v1alpha1.TektonKueue) error {
-	// These APIs are only required for ACM-managed worker registration.
+	// The plugin needs these APIs to register workers and to install operators.
+	// It installs cert-manager and Kueue itself.
 	for _, gv := range []string{
 		"cluster.open-cluster-management.io/v1",
 		"authentication.open-cluster-management.io/v1beta1",
 		"work.open-cluster-management.io/v1",
 		"operators.coreos.com/v1",
 		"operators.coreos.com/v1alpha1",
-		"kueue.openshift.io/v1",
-		"kueue.x-k8s.io/v1beta2",
 	} {
 		if _, err := oe.discovery.ServerResourcesForGroupVersion(gv); err != nil {
-			kueue.Status.MarkPostReconcilerFailed(fmt.Sprintf("ACM plugin requires API %s: %v", gv, err))
-			return v1alpha1.REQUEUE_EVENT_AFTER
+			return errors.Wrapf(v1alpha1.REQUEUE_EVENT_AFTER, "ACM plugin requires API %s", gv)
 		}
 	}
 	if err := oe.installerSetClient.CustomSet(ctx, kueue, multiKueuePluginSet, &oe.manifest, transformPlugin, nil); err != nil {
-		kueue.Status.MarkPostReconcilerFailed(fmt.Sprintf("ACM plugin installation is not ready: %v", err))
-		return err
+		return errors.Wrap(err, "ACM plugin installation is not ready")
 	}
 	return nil
 }
