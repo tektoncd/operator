@@ -24,6 +24,12 @@ On **Spoke** clusters, leave `multi-cluster-role` as `Spoke`; the proxy is not i
 
 The proxy is only installed when the [Tekton Kueue](./TektonKueue.md) is enabled with multi-cluster (Hub role). **cert-manager** and **Kueue** (and **MultiKueue** for the proxy) are required for Tekton Kueue and multi-cluster in general; you must install them before enabling Tekton Kueue, unless the `acm` [fleet manager](./TektonKueue.md#fleet-manager) installs them. For full prerequisites and multi-cluster configuration, see [Tekton Kueue](./TektonKueue.md). [TektonConfig](./TektonConfig.md) (Tekton Kueue section) also summarizes this and points to Tekton Kueue.
 
+The operator deploys the proxy only after Kueue serves the MultiKueueCluster API (`multikueueclusters` in `kueue.x-k8s.io/v1beta1`), which the proxy uses to find worker clusters. Until then the TektonMulticlusterProxyAAE status reports:
+
+```
+Dependency missing: Kueue API kueue.x-k8s.io/v1beta1 multikueueclusters does not exist
+```
+
 If you see a config status error such as:
 
 ```

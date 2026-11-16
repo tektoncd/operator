@@ -70,7 +70,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, proxy *v1alpha1.TektonMu
 		return err
 	}
 
-	// Make sure TektonPipeline is installed before proceeding with TektonMulticlusterProxyAAE.
+	// Make sure TektonPipeline and Kueue's MultiKueueCluster API are available
+	// before proceeding with TektonMulticlusterProxyAAE.
 	if err := r.ensureDependenciesInstalled(proxy); err != nil {
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
@@ -126,7 +127,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, proxy *v1alpha1.TektonMu
 	return nil
 }
 
-// ensureDependenciesInstalled ensures TektonPipeline is installed and ready before proceeding.
+// The proxy finds its worker clusters through this Kueue API.
+const (
+	multiKueueClusterGroupVersion = "kueue.x-k8s.io/v1beta1"
+	multiKueueClusterResource     = "multikueueclusters"
+)
+
+// ensureDependenciesInstalled ensures TektonPipeline is installed and ready, and
+// that Kueue serves MultiKueueClusters, before proceeding.
 func (r *Reconciler) ensureDependenciesInstalled(proxy *v1alpha1.TektonMulticlusterProxyAAE) error {
 	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
 		if err.Error() == common.PipelineNotReady || err == v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR {
@@ -138,5 +146,29 @@ func (r *Reconciler) ensureDependenciesInstalled(proxy *v1alpha1.TektonMulticlus
 		proxy.Status.MarkDependencyMissing("tekton-pipelines does not exist")
 		return err
 	}
+
+	// The proxy starts its watch on MultiKueueClusters when it starts. A proxy
+	// that starts before Kueue serves them may never find a worker, so it is
+	// deployed only afterwards.
+	if !r.servesMultiKueueClusters() {
+		proxy.Status.MarkDependencyMissing(fmt.Sprintf("Kueue API %s %s does not exist",
+			multiKueueClusterGroupVersion, multiKueueClusterResource))
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	}
 	return nil
+}
+
+// servesMultiKueueClusters checks the resource and not only its group version:
+// Kueue's CRDs are created one by one.
+func (r *Reconciler) servesMultiKueueClusters() bool {
+	resources, err := r.kubeClientSet.Discovery().ServerResourcesForGroupVersion(multiKueueClusterGroupVersion)
+	if err != nil {
+		return false
+	}
+	for _, resource := range resources.APIResources {
+		if resource.Name == multiKueueClusterResource {
+			return true
+		}
+	}
+	return false
 }
