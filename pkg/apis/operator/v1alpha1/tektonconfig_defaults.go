@@ -256,12 +256,14 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 		// exists, regardless of its component states. Explicit user settings win.
 		// TODO: Remove this check after OpenShift Builds Operator is decommissioned
 		enableComponent := true
-		if installed, err := isOpenShiftBuildsInstalled(ctx); err != nil {
-			// If there's error, assume OpenShift Builds is installed and disable Shipwright and Shared Resource
-			logger.Error("Error detecting OpenShift Builds installation, Shipwright and Shared Resource will be disabled", err)
-			enableComponent = false
-		} else {
-			enableComponent = !installed
+		if tc.Spec.Platforms.OpenShift.ShipwrightBuild == nil || tc.Spec.Platforms.OpenShift.SharedResource == nil {
+			if installed, err := isOpenShiftBuildsInstalled(ctx); err != nil {
+				// If there's error, assume OpenShift Builds is installed and disable Shipwright and Shared Resource
+				logger.Error("Error detecting OpenShift Builds installation, Shipwright and Shared Resource will be disabled", err)
+				enableComponent = false
+			} else {
+				enableComponent = !installed
+			}
 		}
 		if tc.Spec.Platforms.OpenShift.ShipwrightBuild == nil {
 			tc.Spec.Platforms.OpenShift.ShipwrightBuild = &ShipwrightBuildConfig{Enabled: enableComponent}
