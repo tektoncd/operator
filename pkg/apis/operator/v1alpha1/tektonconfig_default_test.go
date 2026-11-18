@@ -103,7 +103,7 @@ func Test_SetDefaults_OpenShiftBuildComponentsPreserveExplicitValues(t *testing.
 			assert.Equal(t, platform.ShipwrightBuild.Enabled, tc.configured)
 			assert.Equal(t, platform.SharedResource.Enabled, tc.configured)
 			client := dynamicclient.Get(ctx).(*dynamicfake.FakeDynamicClient)
-			assert.Equal(t, len(client.Actions()), 1, "detection is performed even with explicit component values")
+			assert.Equal(t, len(client.Actions()), 0, "explicit component blocks must skip detection")
 		})
 	}
 }
