@@ -18,6 +18,7 @@ package common
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
@@ -161,9 +162,15 @@ func (ot *OptionsTransformer) updateMapField(u *unstructured.Unstructured, extra
 
 func (ot *OptionsTransformer) updateConfigMaps(u *unstructured.Unstructured) error {
 
-	optionsConfigMap, found := ot.options.ConfigMaps[u.GetName()]
+	rawExt, found := ot.options.ConfigMaps[u.GetName()]
 	if !found {
 		return nil
+	}
+
+	// Decode RawExtension to ConfigMap
+	var optionsConfigMap corev1.ConfigMap
+	if err := json.Unmarshal(rawExt.Raw, &optionsConfigMap); err != nil {
+		return err
 	}
 
 	// update labels
@@ -203,7 +210,7 @@ func (ot *OptionsTransformer) updateConfigMaps(u *unstructured.Unstructured) err
 func (ot *OptionsTransformer) createConfigMaps(manifest *mf.Manifest, targetNamespace string, additionalOptions v1alpha1.AdditionalOptions) ([]unstructured.Unstructured, error) {
 	extraConfigMaps := []unstructured.Unstructured{}
 	existingConfigMaps := manifest.Filter(mf.Any(mf.ByKind(KindConfigMap)))
-	for configMapName, providedConfigMap := range additionalOptions.ConfigMaps {
+	for configMapName, rawExt := range additionalOptions.ConfigMaps {
 		found := false
 		for _, resource := range existingConfigMaps.Resources() {
 			if resource.GetName() == configMapName {
@@ -213,6 +220,12 @@ func (ot *OptionsTransformer) createConfigMaps(manifest *mf.Manifest, targetName
 		}
 		if found {
 			continue
+		}
+
+		// Decode RawExtension to ConfigMap
+		var providedConfigMap corev1.ConfigMap
+		if err := json.Unmarshal(rawExt.Raw, &providedConfigMap); err != nil {
+			return nil, err
 		}
 
 		// update name
@@ -246,9 +259,15 @@ func (ot *OptionsTransformer) createConfigMaps(manifest *mf.Manifest, targetName
 
 func (ot *OptionsTransformer) updateDeployments(u *unstructured.Unstructured) error {
 	// verify the deployment has changes
-	deploymentOptions, found := ot.options.Deployments[u.GetName()]
+	rawExt, found := ot.options.Deployments[u.GetName()]
 	if !found {
 		return nil
+	}
+
+	// Decode RawExtension to Deployment
+	var deploymentOptions appsv1.Deployment
+	if err := json.Unmarshal(rawExt.Raw, &deploymentOptions); err != nil {
+		return err
 	}
 
 	// update labels
@@ -557,9 +576,15 @@ func (ot *OptionsTransformer) updateDeploymentHashValue(u *unstructured.Unstruct
 
 func (ot *OptionsTransformer) updateStatefulSets(u *unstructured.Unstructured) error {
 	// verify the statefulSet has changes
-	statefulSetOptions, found := ot.options.StatefulSets[u.GetName()]
+	rawExt, found := ot.options.StatefulSets[u.GetName()]
 	if !found {
 		return nil
+	}
+
+	// Decode RawExtension to StatefulSet
+	var statefulSetOptions appsv1.StatefulSet
+	if err := json.Unmarshal(rawExt.Raw, &statefulSetOptions); err != nil {
+		return err
 	}
 
 	// update labels
@@ -685,9 +710,15 @@ func (ot *OptionsTransformer) updateStatefulSets(u *unstructured.Unstructured) e
 }
 
 func (ot *OptionsTransformer) updateHorizontalPodAutoscalers(u *unstructured.Unstructured) error {
-	hpaOptions, found := ot.options.HorizontalPodAutoscalers[u.GetName()]
+	rawExt, found := ot.options.HorizontalPodAutoscalers[u.GetName()]
 	if !found {
 		return nil
+	}
+
+	// Decode RawExtension to HorizontalPodAutoscaler
+	var hpaOptions autoscalingv2.HorizontalPodAutoscaler
+	if err := json.Unmarshal(rawExt.Raw, &hpaOptions); err != nil {
+		return err
 	}
 
 	// update labels
@@ -760,7 +791,7 @@ func (ot *OptionsTransformer) updateHorizontalPodAutoscalers(u *unstructured.Uns
 func (ot *OptionsTransformer) createHorizontalPodAutoscalers(manifest *mf.Manifest, targetNamespace string, additionalOptions v1alpha1.AdditionalOptions) ([]unstructured.Unstructured, error) {
 	newHPAs := []unstructured.Unstructured{}
 	existingHPAs := manifest.Filter(mf.Any(mf.ByKind(KindHorizontalPodAutoscaler)))
-	for hpaName, newHPA := range additionalOptions.HorizontalPodAutoscalers {
+	for hpaName, rawExt := range additionalOptions.HorizontalPodAutoscalers {
 		found := false
 		for _, resource := range existingHPAs.Resources() {
 			if resource.GetName() == hpaName {
@@ -770,6 +801,12 @@ func (ot *OptionsTransformer) createHorizontalPodAutoscalers(manifest *mf.Manife
 		}
 		if found {
 			continue
+		}
+
+		// Decode RawExtension to HorizontalPodAutoscaler
+		var newHPA autoscalingv2.HorizontalPodAutoscaler
+		if err := json.Unmarshal(rawExt.Raw, &newHPA); err != nil {
+			return nil, err
 		}
 
 		// update name
