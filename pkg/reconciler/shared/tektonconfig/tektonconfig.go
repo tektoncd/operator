@@ -176,7 +176,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	// Pre-reconcile extension hooks
 	if err := r.extension.PreReconcile(ctx, tc); err != nil {
-		if err == v1alpha1.RECONCILE_AGAIN_ERR {
+		if errors.Is(err, v1alpha1.RECONCILE_AGAIN_ERR) {
 			logger.Infow("Extensions requested requeue")
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
@@ -201,7 +201,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		errMsg := fmt.Sprintf("TektonPipeline: %s", err.Error())
 		logger.Errorw("Failed to ensure TektonPipeline exists", "error", err)
 		tc.Status.MarkComponentNotReady(errMsg)
-		if err == v1alpha1.RECONCILE_AGAIN_ERR {
+		if errors.Is(err, v1alpha1.RECONCILE_AGAIN_ERR) {
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		return nil
@@ -252,7 +252,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		proxyCR := multiclusterproxyaae.GetTektonMulticlusterProxyAAECR(tc, r.operatorVersion)
 		logger.Debug("Ensuring TektonMulticlusterProxyAAE CR exists (multi-cluster enabled with Hub role)")
 		if _, err := multiclusterproxyaae.EnsureTektonMulticlusterProxyAAEExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonMulticlusterProxyAAEs(), proxyCR); err != nil {
-			if err != v1alpha1.RECONCILE_AGAIN_ERR {
+			if !errors.Is(err, v1alpha1.RECONCILE_AGAIN_ERR) {
 				errMsg := fmt.Sprintf("TektonMulticlusterProxyAAE: %s", err.Error())
 				logger.Errorw("Failed to ensure TektonMulticlusterProxyAAE exists", "error", err)
 				tc.Status.MarkComponentNotReady(errMsg)
@@ -267,7 +267,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			"multiClusterDisabled", tc.Spec.Kueue.MultiClusterDisabled,
 			"multiClusterRole", tc.Spec.Kueue.MultiClusterRole)
 		if err := multiclusterproxyaae.EnsureTektonMulticlusterProxyAAECRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonMulticlusterProxyAAEs()); err != nil {
-			if err == v1alpha1.RECONCILE_AGAIN_ERR {
+			if errors.Is(err, v1alpha1.RECONCILE_AGAIN_ERR) {
 				return v1alpha1.REQUEUE_EVENT_AFTER
 			}
 			errMsg := fmt.Sprintf("TektonMulticlusterProxyAAE: %s", err.Error())

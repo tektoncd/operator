@@ -51,7 +51,7 @@ func EnsureTektonChainExists(ctx context.Context, clients op.TektonChainInterfac
 		return nil, err
 	}
 	if !ready {
-		return nil, v1alpha1.RECONCILE_AGAIN_ERR
+		return nil, v1alpha1.NotReadyError(&tcCR.Status)
 	}
 
 	return tcCR, err
