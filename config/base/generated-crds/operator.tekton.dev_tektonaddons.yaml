@@ -6,6 +6,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: tektonaddons.operator.tekton.dev
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonAddon
