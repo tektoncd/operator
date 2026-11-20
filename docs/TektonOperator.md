@@ -92,6 +92,21 @@ After installing the resources, `TektonInstallerSet` waits for deployment pods t
 
   As we have extension mechanism where we handle platform specific resources, in case of OpenShift we create additional resources in Pre and Post Reconciler in TektonPipeline. In both the cases we have an `TektonInstallerSet` created, on upgrade or target namespace change we delete the old and create a new `TektonInstallerSet`. 
 
+### Proxy webhook certificate metrics
+
+The operator's proxy webhook rotates its own serving certificate. If that
+certificate expires, the webhook starts rejecting admission requests, which can
+also block other components. The proxy webhook exports the expiry as
+`tekton_operator_proxy_webhook_certificate_expiration_timestamp_seconds`, the Unix time
+when the current certificate expires, next to its other metrics.
+
+For example, to alert a day before it expires or once it has expired:
+
+```promql
+tekton_operator_proxy_webhook_certificate_expiration_timestamp_seconds - time() < 86400
+tekton_operator_proxy_webhook_certificate_expiration_timestamp_seconds - time() <= 0
+```
+
 ## Tekton Operator on Openshift
 When the Tekton Operator is [installed](./install.md) for Openshift, the
 Operator configure Tekton in order to cater Tekton the deployment for an
