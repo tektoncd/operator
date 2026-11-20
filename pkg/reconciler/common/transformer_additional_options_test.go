@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	mf "github.com/manifestival/manifestival"
 	"github.com/stretchr/testify/require"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -31,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	apimachineryRuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"knative.dev/pkg/ptr"
 )
@@ -1107,4 +1109,58 @@ func TestDeploymentStrategyDoesNotAffectSpecHash(t *testing.T) {
 		},
 	})
 	require.NotEqual(t, baseline, replicasChanged, "changing the replicas must change the spec hash")
+}
+
+func TestImagePullSecretsOption(t *testing.T) {
+	ctx := context.TODO()
+	targetNamespace := "tekton-pipelines"
+	secrets := []corev1.LocalObjectReference{{Name: "private-registry"}}
+
+	t.Run("deployment", func(t *testing.T) {
+		manifest, err := Fetch("./testdata/test-additional-options-base-strategy-deployment.yaml")
+		require.NoError(t, err)
+		options := v1alpha1.AdditionalOptions{
+			Disabled: ptr.Bool(false),
+			Deployments: map[string]appsv1.Deployment{
+				"tekton-pipelines-controller": {
+					Spec: appsv1.DeploymentSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{ImagePullSecrets: secrets},
+						},
+					},
+				},
+			},
+		}
+		require.NoError(t, ExecuteAdditionalOptionsTransformer(ctx, &manifest, targetNamespace, options))
+
+		deployments := manifest.Filter(mf.ByKind("Deployment")).Resources()
+		require.Len(t, deployments, 1)
+		deployment := &appsv1.Deployment{}
+		require.NoError(t, apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(deployments[0].Object, deployment))
+		require.Equal(t, secrets, deployment.Spec.Template.Spec.ImagePullSecrets)
+	})
+
+	t.Run("statefulset", func(t *testing.T) {
+		manifest, err := Fetch("./testdata/test-additional-options-base-updatestrategy-statefulset.yaml")
+		require.NoError(t, err)
+		options := v1alpha1.AdditionalOptions{
+			Disabled: ptr.Bool(false),
+			StatefulSets: map[string]appsv1.StatefulSet{
+				"web": {
+					Spec: appsv1.StatefulSetSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{ImagePullSecrets: secrets},
+						},
+					},
+				},
+			},
+		}
+		require.NoError(t, ExecuteAdditionalOptionsTransformer(ctx, &manifest, targetNamespace, options))
+
+		statefulSets := manifest.Filter(mf.ByKind("StatefulSet")).Resources()
+		require.Len(t, statefulSets, 1)
+		statefulSet := &appsv1.StatefulSet{}
+		require.NoError(t, apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(statefulSets[0].Object, statefulSet))
+		require.Equal(t, secrets, statefulSet.Spec.Template.Spec.ImagePullSecrets)
+	})
 }
