@@ -404,7 +404,7 @@ spec:
     - Tekton Results: v0.19.0
     - Manual Approval Gate (tech-preview): v0.9.3
     - Tekton Pruner: v0.4.4
-    - Tekton Scheduler (tech-preview): v0.3.1
+    - Tekton Scheduler (tech-preview): v0.3.2
     - Multicluster Proxy AAE (tech-preview): v0.1.1
 
     ## Getting Started
