@@ -144,6 +144,9 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, instance.Spec.GetTargetNamespace(), instance.Spec.Options); err != nil {
 		return err
 	}
+	if err := common.SyncStatefulReplicaCountEnv(manifest); err != nil {
+		return err
+	}
 	return nil
 }
 

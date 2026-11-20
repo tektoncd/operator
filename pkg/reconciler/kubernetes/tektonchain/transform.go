@@ -74,6 +74,9 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, chainCR.Spec.GetTargetNamespace(), chainCR.Spec.Options); err != nil {
 			return &mf.Manifest{}, err
 		}
+		if err := common.SyncStatefulReplicaCountEnv(manifest); err != nil {
+			return &mf.Manifest{}, err
+		}
 
 		return manifest, nil
 	}
