@@ -44,6 +44,24 @@ require (
 
 replace k8s.io/client-go => k8s.io/client-go v0.35.2
 
+// Pin OpenTelemetry to v1.44.0: cert-manager v1.20.5 pulls otel v1.45.0
+// (semconv schema 1.43.0), which panics against knative.dev/pkg's schema 1.41.0
+// ("conflicting Schema URL"). Keep all otel modules on the same version.
+replace (
+	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.44.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc => go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.44.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp => go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.44.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace => go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.44.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc => go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.44.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp => go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.44.0
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace => go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.44.0
+	go.opentelemetry.io/otel/metric => go.opentelemetry.io/otel/metric v1.44.0
+	go.opentelemetry.io/otel/sdk => go.opentelemetry.io/otel/sdk v1.44.0
+	go.opentelemetry.io/otel/sdk/metric => go.opentelemetry.io/otel/sdk/metric v1.44.0
+	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v1.44.0
+	go.opentelemetry.io/proto/otlp => go.opentelemetry.io/proto/otlp v1.10.0
+)
+
 require (
 	cel.dev/expr v0.25.2 // indirect
 	cloud.google.com/go/auth v0.20.0 // indirect

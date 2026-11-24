@@ -9,11 +9,16 @@ package httpconv
 
 import (
 	"context"
+	"sync"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/noop"
-	"go.opentelemetry.io/otel/semconv/internal/metricpool"
+)
+
+var (
+	addOptPool = &sync.Pool{New: func() any { return &[]metric.AddOption{} }}
+	recOptPool = &sync.Pool{New: func() any { return &[]metric.RecordOption{} }}
 )
 
 // ErrorTypeAttr is an attribute conforming to the error.type semantic
@@ -165,8 +170,12 @@ func (m ClientActiveRequests) Add(
 		return
 	}
 
-	o := metricpool.AddOptions()
-	defer metricpool.PutAddOptions(o)
+	o := addOptPool.Get().(*[]metric.AddOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		addOptPool.Put(o)
+	}()
 
 	*o = append(
 		*o,
@@ -192,8 +201,12 @@ func (m ClientActiveRequests) AddSet(ctx context.Context, incr int64, set attrib
 		return
 	}
 
-	o := metricpool.AddOptions()
-	defer metricpool.PutAddOptions(o)
+	o := addOptPool.Get().(*[]metric.AddOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		addOptPool.Put(o)
+	}()
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Int64UpDownCounter.Add(ctx, incr, *o...)
@@ -404,8 +417,12 @@ func (m ClientConnectionDuration) Record(
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(
 		*o,
@@ -431,8 +448,12 @@ func (m ClientConnectionDuration) RecordSet(ctx context.Context, val float64, se
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Float64Histogram.Record(ctx, val, *o...)
@@ -551,8 +572,12 @@ func (m ClientOpenConnections) Add(
 		return
 	}
 
-	o := metricpool.AddOptions()
-	defer metricpool.PutAddOptions(o)
+	o := addOptPool.Get().(*[]metric.AddOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		addOptPool.Put(o)
+	}()
 
 	*o = append(
 		*o,
@@ -579,8 +604,12 @@ func (m ClientOpenConnections) AddSet(ctx context.Context, incr int64, set attri
 		return
 	}
 
-	o := metricpool.AddOptions()
-	defer metricpool.PutAddOptions(o)
+	o := addOptPool.Get().(*[]metric.AddOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		addOptPool.Put(o)
+	}()
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Int64UpDownCounter.Add(ctx, incr, *o...)
@@ -807,8 +836,12 @@ func (m ClientRequestBodySize) Record(
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(
 		*o,
@@ -842,8 +875,12 @@ func (m ClientRequestBodySize) RecordSet(ctx context.Context, val int64, set att
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Int64Histogram.Record(ctx, val, *o...)
@@ -988,8 +1025,12 @@ func (m ClientRequestDuration) Record(
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(
 		*o,
@@ -1016,8 +1057,12 @@ func (m ClientRequestDuration) RecordSet(ctx context.Context, val float64, set a
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Float64Histogram.Record(ctx, val, *o...)
@@ -1168,8 +1213,12 @@ func (m ClientResponseBodySize) Record(
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(
 		*o,
@@ -1203,8 +1252,12 @@ func (m ClientResponseBodySize) RecordSet(ctx context.Context, val int64, set at
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Int64Histogram.Record(ctx, val, *o...)
@@ -1345,8 +1398,12 @@ func (m ServerActiveRequests) Add(
 		return
 	}
 
-	o := metricpool.AddOptions()
-	defer metricpool.PutAddOptions(o)
+	o := addOptPool.Get().(*[]metric.AddOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		addOptPool.Put(o)
+	}()
 
 	*o = append(
 		*o,
@@ -1372,8 +1429,12 @@ func (m ServerActiveRequests) AddSet(ctx context.Context, incr int64, set attrib
 		return
 	}
 
-	o := metricpool.AddOptions()
-	defer metricpool.PutAddOptions(o)
+	o := addOptPool.Get().(*[]metric.AddOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		addOptPool.Put(o)
+	}()
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Int64UpDownCounter.Add(ctx, incr, *o...)
@@ -1573,8 +1634,12 @@ func (m ServerRequestBodySize) Record(
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(
 		*o,
@@ -1607,8 +1672,12 @@ func (m ServerRequestBodySize) RecordSet(ctx context.Context, val int64, set att
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Int64Histogram.Record(ctx, val, *o...)
@@ -1761,8 +1830,12 @@ func (m ServerRequestDuration) Record(
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(
 		*o,
@@ -1788,8 +1861,12 @@ func (m ServerRequestDuration) RecordSet(ctx context.Context, val float64, set a
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Float64Histogram.Record(ctx, val, *o...)
@@ -1948,8 +2025,12 @@ func (m ServerResponseBodySize) Record(
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(
 		*o,
@@ -1982,8 +2063,12 @@ func (m ServerResponseBodySize) RecordSet(ctx context.Context, val int64, set at
 		return
 	}
 
-	o := metricpool.RecordOptions()
-	defer metricpool.PutRecordOptions(o)
+	o := recOptPool.Get().(*[]metric.RecordOption)
+	defer func() {
+		clear(*o)
+		*o = (*o)[:0]
+		recOptPool.Put(o)
+	}()
 
 	*o = append(*o, metric.WithAttributeSet(set))
 	m.Int64Histogram.Record(ctx, val, *o...)
