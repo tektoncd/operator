@@ -343,6 +343,32 @@ release_yaml_custom() {
   done
 }
 
+append_version_info_config_map() {
+  local component=$1
+  local repository=$(yq ."${component}".github "${CONFIG}")
+  local version=$(yq ."${component}".version "${CONFIG}")
+  local destination=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata/${component}/${version//v}/release.yaml
+
+  if [[ ! -f "${destination}" ]]; then
+    echo "Error: ${destination} not found, cannot append ConfigMap"
+  fi
+
+  printf '\n---\n' >> "${destination}"
+  cat >> "${destination}" << EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${component}-info
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: ${component%-*}
+data:
+  version: "${version}"
+EOF
+
+}
+
 fetch_openshift_build_strategies() {
     local shipwright_version=$(yq .shipwright-build.version ${CONFIG})
     local strategy_repository="redhat-openshift-builds/strategies"
@@ -495,10 +521,12 @@ main() {
   else
     release_yaml_custom shipwright-build "" "" true release.yaml sample-strategies.yaml
   fi
+  append_version_info_config_map shipwright-build
 
   # Shared Resource CSI Driver
   if [[ ${TARGET} == "openshift" ]]; then
     release_yaml_custom shared-resource "" "" true release.yaml
+    append_version_info_config_map shared-resource
   fi
 
   echo updated payload tree
