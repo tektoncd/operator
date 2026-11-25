@@ -18,6 +18,7 @@ package tektonkueue
 
 import (
 	"context"
+	"os"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/pkg/errors"
@@ -26,12 +27,20 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"knative.dev/pkg/logging"
 )
 
-const multiKueuePluginSet = "multikueue-plugin"
+const (
+	multiKueuePluginSet = "multikueue-plugin"
+
+	// pipelinesOperatorChannelEnv names the OLM channel of this operator. It is
+	// passed on to the plugin, which installs OpenShift Pipelines on worker
+	// clusters from this channel.
+	pipelinesOperatorChannelEnv = "PIPELINES_OPERATOR_CHANNEL"
+)
 
 // reconcilePlugin installs the plugin. Until it is ready, it returns a requeue
 // error that is wrapped with the reason.
@@ -49,10 +58,24 @@ func (oe openshiftExtension) reconcilePlugin(ctx context.Context, kueue *v1alpha
 			return errors.Wrapf(v1alpha1.REQUEUE_EVENT_AFTER, "ACM plugin requires API %s", gv)
 		}
 	}
-	if err := oe.installerSetClient.CustomSet(ctx, kueue, multiKueuePluginSet, &oe.manifest, transformPlugin, nil); err != nil {
+	if err := oe.installerSetClient.CustomSet(ctx, withPluginHashInput(kueue), multiKueuePluginSet, &oe.manifest, transformPlugin, nil); err != nil {
 		return errors.Wrap(err, "ACM plugin installation is not ready")
 	}
 	return nil
+}
+
+// withPluginHashInput adds the channel from the operator's environment to the
+// hash of the plugin installer set. The set is updated only when that hash
+// changes, and the channel is not part of the TektonKueue spec.
+func withPluginHashInput(kueue *v1alpha1.TektonKueue) *v1alpha1.TektonKueue {
+	channel := os.Getenv(pipelinesOperatorChannelEnv)
+	if channel == "" {
+		return kueue
+	}
+	kueue = kueue.DeepCopy()
+	metav1.SetMetaDataAnnotation(&kueue.ObjectMeta, v1alpha1.PlatformDataHashKey,
+		kueue.Annotations[v1alpha1.PlatformDataHashKey]+pipelinesOperatorChannelEnv+"="+channel)
+	return kueue
 }
 
 // cleanupPlugin removes the plugin installer set. It requeues until the set is
@@ -95,10 +118,14 @@ func transformPlugin(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.T
 		return nil, err
 	}
 	images := common.ImageRegistryDomainOverride(common.ToLowerCaseKeys(common.ImagesFromEnv(common.MultiKueuePluginImagePrefix)))
+	env := []corev1.EnvVar{{Name: "KUEUE_NAMESPACE", Value: openshift.KueueNameSpace}}
+	if channel := os.Getenv(pipelinesOperatorChannelEnv); channel != "" {
+		env = append(env, corev1.EnvVar{Name: pipelinesOperatorChannelEnv, Value: channel})
+	}
 	if err := common.Transform(ctx, &updated, comp,
 		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.TektonKueueResourceName),
 		common.DeploymentImages(images),
-		common.DeploymentEnvVars([]corev1.EnvVar{{Name: "KUEUE_NAMESPACE", Value: openshift.KueueNameSpace}}),
+		common.DeploymentEnvVars(env),
 		occommon.RemoveRunAsUser(), occommon.RemoveRunAsGroup(),
 	); err != nil {
 		return nil, err
