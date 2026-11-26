@@ -3,6 +3,20 @@
 Installs and manages Tekton components (Pipeline, Triggers, Chains, Dashboard,
 Results, PAC…) on Kubernetes and OpenShift via custom CRDs and controllers.
 
+## Doc map
+
+Load only the docs needed for the current task:
+
+| Topic | Path | When to load |
+|-------|------|--------------|
+| architecture | [docs/TektonOperator.md](docs/TektonOperator.md) | reconciler / InstallerSet / CR design |
+| development | [DEVELOPMENT.md](DEVELOPMENT.md) | local kind setup, apply, debug |
+| tests | [test/README.md](test/README.md) | e2e / upgrade how-to |
+| ci | [docs/ci.md](docs/ci.md) | failing checks, re-run, slash commands |
+| install | [docs/install.md](docs/install.md) | install / upgrade operator |
+| components | [docs/README.md](docs/README.md) → `docs/<CR>.md` | CR-specific behavior |
+| release | [docs/release/README.md](docs/release/README.md) | cutting / bumping releases |
+
 ---
 
 ## Build & Test Commands
