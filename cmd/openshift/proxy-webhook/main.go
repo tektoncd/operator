@@ -31,7 +31,6 @@ import (
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
 	kwebhook "knative.dev/pkg/webhook"
-	"knative.dev/pkg/webhook/certificates"
 )
 
 func newAnnotationDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -113,7 +112,7 @@ func main() {
 
 	sharedmain.WebhookMainWithConfig(ctx, "webhook-operator",
 		cfg,
-		certificates.NewController,
+		proxy.NewCertificateController,
 		proxy.NewProxyDefaultingAdmissionController,
 		newAnnotationDefaultingAdmissionController,
 		namespace.NewNamespaceAdmissionController,
