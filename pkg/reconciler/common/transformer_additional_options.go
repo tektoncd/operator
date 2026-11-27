@@ -326,6 +326,11 @@ func (ot *OptionsTransformer) updateDeployments(u *unstructured.Unstructured) er
 		targetDeployment.Spec.Template.Spec.RuntimeClassName = deploymentOptions.Spec.Template.Spec.RuntimeClassName
 	}
 
+	// update image pull secrets, e.g. to pull the images from a private registry
+	if len(deploymentOptions.Spec.Template.Spec.ImagePullSecrets) > 0 {
+		targetDeployment.Spec.Template.Spec.ImagePullSecrets = deploymentOptions.Spec.Template.Spec.ImagePullSecrets
+	}
+
 	// update volumes
 	targetDeployment.Spec.Template.Spec.Volumes = ot.updateVolumes(targetDeployment.Spec.Template.Spec.Volumes, deploymentOptions.Spec.Template.Spec.Volumes)
 
@@ -631,6 +636,11 @@ func (ot *OptionsTransformer) updateStatefulSets(u *unstructured.Unstructured) e
 	// update Topology Spread Constraints
 	if len(statefulSetOptions.Spec.Template.Spec.TopologySpreadConstraints) > 0 {
 		targetStatefulSet.Spec.Template.Spec.TopologySpreadConstraints = statefulSetOptions.Spec.Template.Spec.TopologySpreadConstraints
+	}
+
+	// update image pull secrets, e.g. to pull the images from a private registry
+	if len(statefulSetOptions.Spec.Template.Spec.ImagePullSecrets) > 0 {
+		targetStatefulSet.Spec.Template.Spec.ImagePullSecrets = statefulSetOptions.Spec.Template.Spec.ImagePullSecrets
 	}
 
 	// update pod management policy
