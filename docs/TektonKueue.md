@@ -155,6 +155,14 @@ variables. For standalone TektonKueue, use `spec.options.deployments`.
 `KUEUE_NAMESPACE` changes Secret placement only; the bundled external Kueue RBAC
 binding still targets `openshift-kueue-operator`.
 
+The plugin installs OpenShift Pipelines on a worker that has no Subscription for
+it. When the operator has the `PIPELINES_OPERATOR_CHANNEL` environment variable,
+it passes the value to the plugin, which uses that channel for these workers.
+OpenShift Pipelines sets it to its own channel, so these workers get the hub's
+version. Without it, the plugin uses the channel defined by its bundled release.
+Workers that already run OpenShift Pipelines keep their version. The deployment
+options above can override the channel.
+
 Operator deployments can override the plugin image with
 `IMAGE_MULTIKUEUE_PLUGIN_CONTROLLER`. The plugin also uses the existing
 `TEKTON_REGISTRY_OVERRIDE` mechanism.

@@ -77,6 +77,10 @@ spec:
           value: tekton.dev/operator
         - name: VERSION
           value: "devel"
+        # OLM channel of this operator. When set, the MultiKueue plugin installs
+        # OpenShift Pipelines on worker clusters from this channel.
+        - name: PIPELINES_OPERATOR_CHANNEL
+          value: ""
         - name: AUTOINSTALL_COMPONENTS
           valueFrom:
             configMapKeyRef:
