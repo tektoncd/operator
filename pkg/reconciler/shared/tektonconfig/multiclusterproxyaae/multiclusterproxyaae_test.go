@@ -17,21 +17,32 @@ limitations under the License.
 package multiclusterproxyaae
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/ptr"
 )
+
+// toRawExtension converts any object to runtime.RawExtension for testing
+func toRawExtension(t *testing.T, obj interface{}) runtime.RawExtension {
+	t.Helper()
+	data, err := json.Marshal(obj)
+	require.NoError(t, err)
+	return runtime.RawExtension{Raw: data}
+}
 
 func TestGetTektonMulticlusterProxyAAECR(t *testing.T) {
 	t.Run("propagates options from TektonConfig to the CR spec", func(t *testing.T) {
 		wantOptions := v1alpha1.AdditionalOptions{
-			Deployments: map[string]appsv1.Deployment{
-				"proxy-aae": {
+			Deployments: map[string]runtime.RawExtension{
+				"proxy-aae": toRawExtension(t, appsv1.Deployment{
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
@@ -46,7 +57,7 @@ func TestGetTektonMulticlusterProxyAAECR(t *testing.T) {
 							},
 						},
 					},
-				},
+				}),
 			},
 		}
 		tc := &v1alpha1.TektonConfig{
