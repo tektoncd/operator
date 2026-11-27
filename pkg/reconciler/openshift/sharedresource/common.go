@@ -31,7 +31,7 @@ const (
 	// VersionConfigMap is the ConfigMap that carries the installed component
 	// version. It must match v1alpha1.SharedResourceResourceName so that the
 	// init controller selects the shared-resource payload.
-	VersionConfigMap = "shared-resource"
+	VersionConfigMap = "shared-resource-info"
 	// ServiceName is the service used to for CSI driver node.
 	ServiceName = "shared-resource-csi-driver-node"
 	// ServiceMonitorName is the name of the Service Monitor

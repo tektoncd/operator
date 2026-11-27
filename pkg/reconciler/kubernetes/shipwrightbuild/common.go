@@ -7,7 +7,7 @@ const (
 	ControllerDeploymentName = "shipwright-build-controller"
 	KindClusterBuildStrategy = "ClusterBuildStrategy"
 	OperandName              = "shipwright-build"
-	VersionConfigMap         = "shipwright-build"
+	VersionConfigMap         = "shipwright-build-info"
 	WebhookContainerName     = "shipwright-build-webhook"
 	WebhookDeploymentName    = "shipwright-build-webhook"
 	// WebhookSecretName / WebhookServiceName / WebhookSecretDuration describe the
