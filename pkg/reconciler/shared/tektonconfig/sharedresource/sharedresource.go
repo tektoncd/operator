@@ -78,7 +78,7 @@ func CreateOrUpdate(ctx context.Context, client operatorclient.SharedResourceInt
 	if ready, err := isReady(sr); err != nil {
 		return nil, err
 	} else if !ready {
-		return nil, v1alpha1.RECONCILE_AGAIN_ERR
+		return nil, v1alpha1.NotReadyError(&sr.Status)
 	}
 
 	return sr, nil

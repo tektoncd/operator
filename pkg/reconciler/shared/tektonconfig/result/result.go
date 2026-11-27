@@ -53,7 +53,7 @@ func EnsureTektonResultExists(ctx context.Context, clients op.TektonResultInterf
 		return nil, err
 	}
 	if !ready {
-		return nil, v1alpha1.RECONCILE_AGAIN_ERR
+		return nil, v1alpha1.NotReadyError(&trCR.Status)
 	}
 
 	return trCR, err
